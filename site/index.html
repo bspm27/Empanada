@@ -47,6 +47,8 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
 .tside div{background:#0f1419;border-radius:8px;padding:8px}
 .tside b{display:block;margin-bottom:3px}
 .tside small{color:var(--muted)}
+.roast h3{margin:16px 0 4px;font-size:15px;color:var(--acc2)}
+.roast li,.roast p{color:#c9d1d9}.roast ul{padding-left:20px;margin:4px 0}
 .rules h3{margin:16px 0 4px;font-size:15px;color:var(--acc)}
 .rules p,.rules li{color:#c9d1d9}
 .muted{color:var(--muted)}
@@ -121,6 +123,60 @@ details summary{cursor:pointer}
     <div class="card"><h2>Lifetime winnings</h2><div class="scroll"><table id="winnings"></table></div></div>
     <div class="card"><h2>Draft pick deposits</h2><p class="note">Trading away a future 1st requires a $50 deposit toward that year's buy-in. This list shows every future 1st currently owned by someone other than the original team.</p><div class="scroll"><table id="deposits"></table></div></div>
   </section>
+  <section id="s-paunch">
+    <div class="card roast">
+      <h2>The case against Schrodinger's Paunch</h2>
+      <p class="note">awillis7: a 2022 startup draft with a manager attached. All figures from Sleeper and KTC, as of Nov 2026.</p>
+
+      <h3>1. One good draft, four years of coasting</h3>
+      <ul>
+        <li>42% of his roster's KTC value comes from the 2022 startup, tied for the most in the league. bspm27 is at 8%, zminns at 4%.</li>
+        <li>His top five players (Amon-Ra St. Brown, CeeDee Lamb, James Cook, Lamar Jackson, Christian Watson) are all startup picks he has held since 2022. The 2023 title was won with that core.</li>
+        <li>All five are 27 to 29. The only young player on his roster valued above 4,000 is Colston Loveland.</li>
+      </ul>
+
+      <h3>2. Trades: busy, not good</h3>
+      <ul>
+        <li>6 trades, net <b class="down">-88</b> KTC today.</li>
+        <li>Traded Bo Nix, his own 1.12 pick, for Brian Robinson Jr. Net today: <b class="down">-2,381</b>.</li>
+        <li>Traded George Pickens for Jared Goff (<b class="down">-463</b>). Traded Christian Kirk plus a 2nd for DJ Moore (<b class="down">-514</b>).</li>
+      </ul>
+
+      <h3>3. Drafts: coin flips</h3>
+      <ul>
+        <li>2023: ranked 10th of 12 vs. slot value. Dalton Kincaid at 1.08 is now 16th in his class. Stetson Bennett at 4.08.</li>
+        <li>2026: Ty Simpson at 1.11, 16th in his class.</li>
+        <li>His one great rookie pick, Bo Nix, he then traded away for a running back.</li>
+      </ul>
+
+      <h3>4. Waivers: nothing</h3>
+      <ul><li>Five seasons, zero entries in the waiver hall of fame.</li></ul>
+
+      <h3>5. The lineups</h3>
+      <ul>
+        <li><b>8 losses</b> where the lineup already on his roster would have won.</li>
+        <li>2022 week 7: started Ryan Tannehill (3.88) over Justin Fields (24.36). Lost 85.7 to 109.4.</li>
+        <li>2025 week 1: lost 128.6 to 137.6 with 155.1 sitting available.</li>
+        <li>2025 week 12: lost 110.2 to 123.3 with 137.1 available.</li>
+        <li>2025 week 2: started Justin Fields (3.98) over Jared Goff (33.96). A 30-point swing.</li>
+        <li>2025 playoffs: benched Alec Pierce for Christian Watson in week 16 (Pierce 22.6, Watson 2.7). Flipped it in week 17 and started Pierce (0.0) over Watson (19.8). Wrong both times.</li>
+        <li>Started Dalton Schultz for zero points in back-to-back weeks (2022 weeks 4 and 5). Started two zeros in the same week, DeVante Parker and Nico Collins (2022 week 9).</li>
+        <li>Left 240.8 points on the bench in 2022 alone.</li>
+      </ul>
+
+      <h3>6. Shows up, then folds</h3>
+      <ul>
+        <li>2022: led the league in points scored and finished outside the top 3.</li>
+        <li>1 for 3 in championship games, losing the 2024 and 2025 finals.</li>
+      </ul>
+
+      <h3>7. And when the lineup can't win it</h3>
+      <ul><li>He tried to rig a first-round bye by convincing his opponent not to set a lineup. When your edge is asking the other guy not to play, that's not a strategy. That's an admission.</li></ul>
+
+      <h3>Verdict</h3>
+      <p>Take away the 2022 startup draft and what's left is a break-even trader, a coin-flip drafter, a waiver wire ghost, and a guy who starts players on zero. Mid.</p>
+    </div>
+  </section>
   <section id="s-rules" class="rules">
     <div class="card">
       <h2>League rules</h2>
@@ -146,7 +202,7 @@ details summary{cursor:pointer}
   </section>
 </main>
 <script>
-const TABS=[["now","This season"],["dynasty","Dynasty"],["drafts","Drafts"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
+const TABS=[["now","This season"],["dynasty","Dynasty"],["drafts","Drafts"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["paunch","Schrodinger's Paunch"],["rules","Rules"]];
 let D, whatIf={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
