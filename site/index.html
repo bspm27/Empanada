@@ -56,7 +56,8 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
 .tile .top{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700}
 .tile .fn{font-size:12px;line-height:1.1;opacity:.92;margin-top:2px}
 .tile .ln{font-size:15px;font-weight:800;line-height:1.1}
-.tile .bot{margin-top:auto;font-size:11px;display:flex;justify-content:space-between;opacity:.95}
+.tile .bot{margin-top:auto;font-size:12px;display:flex;justify-content:space-between;white-space:nowrap}
+.tile .bot2{font-size:11px;display:flex;justify-content:space-between;opacity:.9;white-space:nowrap}
 .tile .tr{font-size:11px;font-weight:700;background:rgba(0,0,0,.28);border-radius:4px;padding:0 4px;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptag{display:inline-block;border-radius:4px;padding:0 5px;font-size:11px;font-weight:800;color:#10151b}
 .ptag.QB{background:#ef74a1}.ptag.RB{background:#8ff2ca}.ptag.WR{background:#56c9f8}.ptag.TE{background:#feae58}.ptag.X{background:#b0b8c4}
@@ -90,7 +91,7 @@ details summary{cursor:pointer}
     <div class="card" id="trend-card"><h2>Value over time</h2><p class="note">Each team's total KTC value, updated daily.</p><div id="trend"></div></div>
   </section>
   <section id="s-drafts">
-    <div class="card"><h2>Rookie drafts</h2><p class="note">Each pick is graded on the player's KTC value today vs. what that draft slot is worth. Slot values follow KTC's pick prices (1.01 is worth the most) scaled to each class's total value today, so an average pick grades OK and older classes stay fair as players retire. Green means the player is worth more than the pick spent on him; red means less. Tiles marked with → were traded picks, showing who made the pick.</p>
+    <div class="card"><h2>Rookie drafts</h2><p class="note">Each pick is graded on the player's KTC value today vs. what that draft slot is worth. Slot values follow KTC's pick prices (1.01 is worth the most) scaled to each class's total value today, so an average pick grades OK and older classes stay fair as players retire. Green means the player is worth more than the pick spent on him; red means less. "#" is the player's rank in his class by today's value. Tiles marked with → were traded picks, showing who made the pick.</p>
       <div class="wi" id="draft-years"></div>
       <div class="legend"><span>Bad</span><i class="grad"></i><span>Great</span><span class="ptag QB">QB</span><span class="ptag RB">RB</span><span class="ptag WR">WR</span><span class="ptag TE">TE</span></div>
       <div class="scroll"><div id="draft-board"></div></div></div>
@@ -363,7 +364,7 @@ function renderDrafts(){
       ${p.picker&&p.orig&&p.picker!=p.orig?`<span class="tr">→ ${esc(mname(p.picker))}</span>`:""}
       <div class="top"><span><span class="ptag ${pos}">${esc(p.pos||"?")}</span> ${esc(p.nfl||"")}</span><span>${p.pick}</span></div>
       <div class="fn">${esc(fn)}</div><div class="ln">${esc(ln)}</div>
-      <div class="bot"><span>${p.value.toLocaleString()}</span><span>${p.diff>=0?"+":""}${p.diff.toLocaleString()} · ${p.grade}</span></div></div>`;
+      <div class="bot"><span><b>${p.value.toLocaleString()}</b> · #${p.vrank}</span></div><div class="bot2"><span>${p.diff>=0?"+":""}${p.diff.toLocaleString()}</span><span>${p.grade}</span></div></div>`;
   }
   $("draft-board").innerHTML=h+"</div>";
   $("draft-rc-title").textContent=`${d.season} draft report card`;
