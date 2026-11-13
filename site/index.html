@@ -50,6 +50,18 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
 .rules h3{margin:16px 0 4px;font-size:15px;color:var(--acc)}
 .rules p,.rules li{color:#c9d1d9}
 .muted{color:var(--muted)}
+.board{display:grid;gap:6px}
+.board .hd{font-size:12px;font-weight:700;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px}
+.tile{border-radius:8px;padding:6px 7px;color:#fff;min-height:96px;display:flex;flex-direction:column;gap:1px;position:relative}
+.tile .top{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700}
+.tile .fn{font-size:12px;line-height:1.1;opacity:.92;margin-top:2px}
+.tile .ln{font-size:15px;font-weight:800;line-height:1.1}
+.tile .bot{margin-top:auto;font-size:11px;display:flex;justify-content:space-between;opacity:.95}
+.tile .tr{font-size:11px;font-weight:700;background:rgba(0,0,0,.28);border-radius:4px;padding:0 4px;align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptag{display:inline-block;border-radius:4px;padding:0 5px;font-size:11px;font-weight:800;color:#10151b}
+.ptag.QB{background:#ef74a1}.ptag.RB{background:#8ff2ca}.ptag.WR{background:#56c9f8}.ptag.TE{background:#feae58}.ptag.X{background:#b0b8c4}
+.legend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:6px 0 10px}
+.legend .grad{display:inline-block;width:110px;height:10px;border-radius:5px;background:linear-gradient(90deg,#b4232c,#9a7414,#1f8a4c)}
 th .arr{font-size:10px;margin-left:3px;color:var(--acc)}
 .up{color:var(--good)}.down{color:var(--bad)}
 .vals{color:var(--muted);font-size:12px;white-space:nowrap}
@@ -76,6 +88,13 @@ details summary{cursor:pointer}
       <div class="scroll"><table id="dyn"></table></div></div>
     <div class="card"><h2>Contender or rebuilder</h2><p class="note">Across: projected points per week for the rest of this season. Up: total KTC value. Top right is a dynasty, bottom left is in trouble.</p><div id="quad"></div></div>
     <div class="card" id="trend-card"><h2>Value over time</h2><p class="note">Each team's total KTC value, updated daily.</p><div id="trend"></div></div>
+  </section>
+  <section id="s-drafts">
+    <div class="card"><h2>Rookie drafts</h2><p class="note">Each class is ranked by today's KTC value and compared to where each player was picked. Green means the player is now worth more than his draft slot; red means less. Tiles marked with → were traded picks, showing who made the pick.</p>
+      <div class="wi" id="draft-years"></div>
+      <div class="legend"><span>Bad</span><i class="grad"></i><span>Great</span><span class="ptag QB">QB</span><span class="ptag RB">RB</span><span class="ptag WR">WR</span><span class="ptag TE">TE</span></div>
+      <div class="scroll"><div id="draft-board"></div></div></div>
+    <div class="card"><h2 id="draft-rc-title">Draft report card</h2><p class="note">Every team's picks in this class. "Avg vs slot" is how many spots better (+) or worse (−) their picks rank today than where they were taken.</p><div class="scroll"><table id="draft-rc"></table></div></div>
   </section>
   <section id="s-history">
     <div class="card"><h2>Trophy case</h2><div class="trophy" id="trophies"></div></div>
@@ -126,7 +145,7 @@ details summary{cursor:pointer}
   </section>
 </main>
 <script>
-const TABS=[["now","This season"],["dynasty","Dynasty"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
+const TABS=[["now","This season"],["dynasty","Dynasty"],["drafts","Drafts"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
 let D, whatIf={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -316,6 +335,43 @@ function renderDynasty(){
   $("trend").innerHTML=svg+`<div class="chips">${owners.map((o,i)=>`<span style="border-color:${cols[i%12]}">${esc(mname(o))}</span>`).join("")}</div>`;
 }
 
+
+/* ---------- drafts ---------- */
+let draftYear=null;
+function gradeColor(sc){
+  const lerp=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+  const red=[180,35,44],mid=[154,116,20],green=[31,138,76];
+  const c=sc<0?lerp(mid,red,Math.min(1,-sc)):lerp(mid,green,Math.min(1,sc));
+  return `rgb(${c.join(",")})`;
+}
+function renderDrafts(){
+  const DR=D.drafts||[];
+  if(!DR.length){$("draft-board").innerHTML='<p class="empty">No rookie drafts yet.</p>';return}
+  if(!draftYear)draftYear=DR[0].season;
+  $("draft-years").innerHTML=DR.map(d=>`<button data-y="${d.season}" class="${d.season==draftYear?"on":""}">${d.season}</button>`).join("");
+  $("draft-years").onclick=e=>{const y=e.target.dataset.y;if(y){draftYear=y;renderDrafts()}};
+  const d=DR.find(x=>x.season==draftYear);
+  const at={};d.picks.forEach(p=>at[p.round+"-"+p.slot]=p);
+  let h=`<div class="board" style="grid-template-columns:repeat(${d.teams},minmax(112px,1fr));min-width:${d.teams*118}px">`;
+  h+=d.slots.map(sl=>`<div class="hd">${esc(mname(sl.owner)||"Slot "+sl.slot)}</div>`).join("");
+  for(let r=1;r<=d.rounds;r++)for(let c=1;c<=d.teams;c++){
+    const p=at[r+"-"+c];
+    if(!p){h+="<div></div>";continue}
+    const parts=(p.player||"").split(" "),fn=parts.shift()||"",ln=parts.join(" ");
+    const pos=["QB","RB","WR","TE"].includes(p.pos)?p.pos:"X";
+    h+=`<div class="tile" style="background:${gradeColor(p.score)}" title="${esc(p.player)}: KTC #${p.vrank} in class, picked ${p.pick_no}">
+      ${p.picker&&p.orig&&p.picker!=p.orig?`<span class="tr">→ ${esc(mname(p.picker))}</span>`:""}
+      <div class="top"><span><span class="ptag ${pos}">${esc(p.pos||"?")}</span> ${esc(p.nfl||"")}</span><span>${p.pick}</span></div>
+      <div class="fn">${esc(fn)}</div><div class="ln">${esc(ln)}</div>
+      <div class="bot"><span>${p.value.toLocaleString()}</span><span>#${p.vrank} · ${p.grade}</span></div></div>`;
+  }
+  $("draft-board").innerHTML=h+"</div>";
+  $("draft-rc-title").textContent=`${d.season} draft report card`;
+  const sd=x=>`<span class="${x>0?"up":x<0?"down":""}">${x>0?"+":""}${x}</span>`;
+  $("draft-rc").innerHTML=`<tr><th class="l">Manager</th><th>Picks</th><th>Value now</th><th>Avg vs slot</th><th>Great</th><th>Bad</th></tr>`+
+    d.report.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.picks}</td><td><b>${r.value.toLocaleString()}</b></td><td data-v="${r.avg_diff}">${sd(r.avg_diff)}</td><td>${r.great||""}</td><td>${r.bad||""}</td></tr>`).join("");
+}
+
 /* ---------- money ---------- */
 function renderMoney(){
   const rows=[...D.alltime].filter(r=>r.winnings>0).sort((a,b)=>b.winnings-a.winnings);
@@ -365,7 +421,7 @@ fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
   document.title=D.league.name+" HQ";
   $("title").textContent=D.league.name;
   $("gen").textContent=`${D.league.seasons[0]}-${D.league.current} · updated ${new Date(D.generated).toLocaleString()}`;
-  tabs();renderWhatIf();renderDynasty();renderStandings();renderHistory();renderH2H();renderRecords();renderMoves();renderMoney();
+  tabs();renderWhatIf();renderDynasty();renderDrafts();renderStandings();renderHistory();renderH2H();renderRecords();renderMoves();renderMoney();
 }).catch(e=>{document.querySelector("main").innerHTML=`<div class="card">Couldn't load data.json: ${esc(e)}</div>`});
 </script>
 </body>

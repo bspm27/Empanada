@@ -60,3 +60,8 @@ if k:
         rows.append((-ss[0]["net_now"], t["date"], ss[0]["team"], [p["name"] for p in ss[0]["players"]] + [p["label"] for p in ss[0]["picks"]], ss[-1]["team"], [p["name"] for p in ss[-1]["players"]] + [(p["label"], p.get("became")) for p in ss[-1]["picks"]]))
     for r in sorted(rows, reverse=True)[:5]:
         print("Worst trade:", r)
+for dr in d.get("drafts") or []:
+    print(f"Draft {dr['season']}: {len(dr['picks'])} picks, {dr['rounds']} rounds")
+    for p in dr["picks"][:12]:
+        print(f"   {p['pick']} {p['player']} {p['pos']} val {p['value']} #{p['vrank']} {p['grade']} picker={M.get(p['picker'],{}).get('name')} orig={M.get(p['orig'],{}).get('name')}")
+    print("   report:", [(M.get(r["owner"], {}).get("name"), r["value"], r["avg_diff"]) for r in dr["report"][:4]])

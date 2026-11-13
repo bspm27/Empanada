@@ -753,6 +753,65 @@ if ktc_today:
         "scorecard": sorted(({"owner": o, **v} for o, v in scorecard.items()), key=lambda x: -x["now"]),
     }
 
+# ---------------------------------------------------------------- rookie draft results
+draft_results = []
+if ktc_today and season_ids:
+    first_season = min(season_ids)
+    for so in seasons:
+        s = so["season"]
+        if s == first_season:  # startup draft
+            continue
+        for dr in load(f"{s}/drafts.json", []) or []:
+            if dr.get("status") != "complete":
+                continue
+            picks = load(f"{s}/draft_{dr['draft_id']}_picks.json", []) or []
+            if not picks:
+                continue
+            slot_owner = {slot: uid for uid, slot in (dr.get("draft_order") or {}).items()}
+            teams_n = int((dr.get("settings") or {}).get("teams") or so["num_teams"])
+            rows = []
+            for pk in picks:
+                pid = pk.get("player_id")
+                md = pk.get("metadata") or {}
+                picker = so["r2o"].get(pk.get("roster_id")) or pk.get("picked_by")
+                orig = slot_owner.get(pk.get("draft_slot"))
+                rows.append({
+                    "round": pk["round"], "slot": pk["draft_slot"], "pick_no": pk["pick_no"],
+                    "pick": f"{pk['round']}.{((pk['pick_no'] - 1) % teams_n) + 1:02d}",
+                    "player": pname(pid) if pid in players else f"{md.get('first_name', '')} {md.get('last_name', '')}".strip(),
+                    "pos": md.get("position") or "/".join(sorted(ppos(pid))), "nfl": md.get("team") or (players.get(pid) or {}).get("team"),
+                    "value": now_val(slug_for(pid)), "picker": picker, "orig": orig,
+                })
+            # rank the class by today's value; ties share the better rank
+            ordered = sorted(rows, key=lambda r: -r["value"])
+            n = len(rows)
+            for i, r in enumerate(ordered):
+                if r["value"] <= 0:
+                    r["vrank"] = n  # not valued by KTC: ranks last in the class
+                else:
+                    r["vrank"] = i + 1 if i == 0 or r["value"] != ordered[i - 1]["value"] else ordered[i - 1]["vrank"]
+            for r in rows:
+                r["diff"] = r["pick_no"] - r["vrank"]  # positive = player is worth more than where he went
+                sc = max(-1.0, min(1.0, r["diff"] / max(n * 0.3, 1)))
+                r["score"] = round(sc, 3)
+                r["grade"] = "Great" if sc >= 0.33 else "Bad" if sc <= -0.33 else "OK"
+            report = defaultdict(lambda: {"picks": 0, "value": 0, "diff": 0, "great": 0, "bad": 0})
+            for r in rows:
+                rc = report[r["picker"]]
+                rc["picks"] += 1
+                rc["value"] += r["value"]
+                rc["diff"] += r["diff"]
+                rc["great"] += r["grade"] == "Great"
+                rc["bad"] += r["grade"] == "Bad"
+            draft_results.append({
+                "season": s, "teams": teams_n, "rounds": max(r["round"] for r in rows),
+                "slots": [{"slot": i, "owner": slot_owner.get(i)} for i in range(1, teams_n + 1)],
+                "picks": sorted(rows, key=lambda r: r["pick_no"]),
+                "report": sorted(({"owner": o, **v, "avg_diff": round(v["diff"] / v["picks"], 1)} for o, v in report.items()),
+                                 key=lambda x: -x["value"]),
+            })
+    draft_results.sort(key=lambda d: d["season"], reverse=True)
+
 # ---------------------------------------------------------------- write
 out = {
     "generated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
@@ -770,6 +829,7 @@ out = {
     "deposits": deposits,
     "sim": sim,
     "ktc": ktc_out,
+    "drafts": draft_results,
 }
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out, separators=(",", ":")))
