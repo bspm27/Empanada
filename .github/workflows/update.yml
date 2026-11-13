@@ -9,7 +9,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -29,10 +29,19 @@ jobs:
           restore-keys: sleeper-raw-1350581422095622144-
       - name: Fetch Sleeper data
         run: python3 fetch.py
+      - name: Fetch KeepTradeCut values
+        run: python3 ktc.py
+        continue-on-error: true
       - name: Build page data
         run: python3 build.py
       - name: Data check
         run: python3 check.py
+      - name: Save KTC history to the repo
+        run: |
+          git config user.name "league-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ktc
+          git diff --cached --quiet || (git commit -q -m "KTC snapshot $(date -u +%F)" && git pull -q --rebase && git push -q)
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

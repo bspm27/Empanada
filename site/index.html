@@ -50,6 +50,12 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
 .rules h3{margin:16px 0 4px;font-size:15px;color:var(--acc)}
 .rules p,.rules li{color:#c9d1d9}
 .muted{color:var(--muted)}
+.up{color:var(--good)}.down{color:var(--bad)}
+.vals{color:var(--muted);font-size:12px;white-space:nowrap}
+.tside .tot{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
+.win{outline:1px solid var(--acc)}
+details summary{cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.chips span{background:#0f1419;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12px;color:#c9d1d9}
 .empty{color:var(--muted);font-style:italic}
 </style>
 </head>
@@ -62,6 +68,13 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
     <div class="card"><h2>What if?</h2><p class="note">Pick winners for this week's games and the odds above update.</p><div id="whatif"></div></div>
     <div class="card"><h2>Tank race</h2><p class="note">Non-playoff teams draft in order of lowest max points. Odds come from the same simulation.</p><div class="scroll"><table id="tank"></table></div></div>
     <div class="card"><h2>Standings</h2><div class="scroll"><table id="cur-stand"></table></div></div>
+  </section>
+  <section id="s-dynasty">
+    <div class="card"><h2>Dynasty rankings</h2><p class="note" id="dyn-note"></p>
+      <div class="wi" id="dyn-sort"><button data-k="total" class="on">Total</button><button data-k="starters">Starters</button><button data-k="picks_value">Picks</button></div>
+      <div class="scroll"><table id="dyn"></table></div></div>
+    <div class="card"><h2>Contender or rebuilder</h2><p class="note">Across: projected points per week for the rest of this season. Up: total KTC value. Top right is a dynasty, bottom left is in trouble.</p><div id="quad"></div></div>
+    <div class="card" id="trend-card"><h2>Value over time</h2><p class="note">Each team's total KTC value, updated daily.</p><div id="trend"></div></div>
   </section>
   <section id="s-history">
     <div class="card"><h2>Trophy case</h2><div class="trophy" id="trophies"></div></div>
@@ -77,7 +90,8 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
   <section id="s-moves">
     <div class="card"><h2>Waiver hall of fame</h2><p class="note">Pickups ranked by points they scored in that manager's starting lineup while on the roster.</p><div class="scroll"><table id="waivers"></table></div></div>
     <div class="card"><h2>Trade network</h2><p class="note">Thicker lines mean more trades between two managers.</p><div id="network"></div></div>
-    <div class="card"><h2>Trade log</h2><div id="tradelog"></div></div>
+    <div class="card"><h2>Trade scorecard</h2><p class="note">KTC value each manager gained or lost across all their trades: at the time of each trade vs. today. Picks already used are valued as the player drafted with them.</p><div class="scroll"><table id="scorecard"></table></div></div>
+    <div class="card"><h2>Trade log</h2><p class="note">KTC superflex values at the trade and today. "est." means a pick's value at the trade is estimated, because KTC no longer tracks picks from past drafts.</p><div id="tradelog"></div></div>
   </section>
   <section id="s-money">
     <div class="card"><h2>Lifetime winnings</h2><div class="scroll"><table id="winnings"></table></div></div>
@@ -106,7 +120,7 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
   </section>
 </main>
 <script>
-const TABS=[["now","This season"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
+const TABS=[["now","This season"],["dynasty","Dynasty"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
 let D, whatIf={};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -239,7 +253,44 @@ function renderMoves(){
   pairs.forEach(([k,v])=>{const [a,b]=k.split("|");if(!pos[a]||!pos[b])return;svg+=`<line x1="${pos[a][0]}" y1="${pos[a][1]}" x2="${pos[b][0]}" y2="${pos[b][1]}" stroke="#3ddc97" stroke-opacity="${.25+.6*v/mx}" stroke-width="${1+7*v/mx}"><title>${esc(mname(a))} and ${esc(mname(b))}: ${v} trade${v>1?"s":""}</title></line>`});
   ids.forEach(o=>{const [x,y]=pos[o],r=8+Math.sqrt(deg[o]||0)*3;const lx=x+(x-cx)*.14,ly=y+(y-cy)*.14;svg+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#171e26" stroke="#f5b942" stroke-width="2"><title>${esc(mname(o))}: ${deg[o]||0} trades</title></circle><text x="${lx}" y="${ly+4}" fill="#e6edf3" font-size="13" text-anchor="middle">${esc(mname(o).slice(0,12))}</text>`});
   $("network").innerHTML=pairs.length?svg+"</svg>":'<p class="empty">No trades yet.</p>';
-  $("tradelog").innerHTML=D.trades.map(t=>`<div class="trade"><div class="muted" style="font-size:13px;margin-bottom:6px">${t.date||t.season} · ${t.season} week ${t.week}</div><div class="tside">${t.sides.map(s=>`<div><b>${esc(s.team)} got</b>${s.players.map(p=>`<div>${esc(p.name)} <small>${esc(p.pos)}</small></div>`).join("")}${s.picks.map(p=>`<div>${esc(p.label)}</div>`).join("")}${s.faab?`<div>$${s.faab} FAAB</div>`:""}${!s.players.length&&!s.picks.length&&!s.faab?'<small>Nothing</small>':""}</div>`).join("")}</div></div>`).join("")||'<p class="empty">No trades yet.</p>';
+  const k=D.ktc,num=x=>x==null?"–":Math.round(x).toLocaleString(),dl=x=>x==null?"":`<span class="${x>=0?"up":"down"}">${x>=0?"+":""}${Math.round(x).toLocaleString()}</span>`;
+  const item=(name,sub,then,now,est)=>`<div>${name} ${sub?`<small>${sub}</small>`:""}${k?`<div class="vals">${num(then)}${est&&then!=null?" est.":""} → ${num(now)}</div>`:""}</div>`;
+  $("tradelog").innerHTML=D.trades.map(t=>`<div class="trade"><div class="muted" style="font-size:13px;margin-bottom:6px">${t.date||t.season} · ${t.season} week ${t.week}${k&&t.winner_now?` · <span class="up">${esc(mname(t.winner_now))} winning now</span>`:""}</div><div class="tside">${t.sides.map(s=>`<div class="${k&&t.winner_now==s.owner?"win":""}"><b>${esc(s.team)} got</b>${s.players.map(p=>item(esc(p.name),esc(p.pos),p.then,p.now,false)).join("")}${s.picks.map(p=>item(esc(p.label),p.became?"→ "+esc(p.became):"",p.then,p.now,p.est)).join("")}${s.faab?`<div>$${s.faab} FAAB</div>`:""}${!s.players.length&&!s.picks.length&&!s.faab?'<small>Nothing</small>':""}${k?`<div class="tot">Then ${num(s.then)} (${dl(s.net_then)}) · Now ${num(s.now)} (${dl(s.net_now)})</div>`:""}</div>`).join("")}</div></div>`).join("")||'<p class="empty">No trades yet.</p>';
+  $("scorecard").innerHTML=k?`<tr><th class="l">Manager</th><th>Trades</th><th>Net at trade</th><th>Net today</th><th>Change</th></tr>`+k.scorecard.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.trades}</td><td>${dl(r.then)}</td><td><b>${dl(r.now)}</b></td><td>${dl(r.now-r.then)}</td></tr>`).join(""):'<tr><td class="empty">KTC values not loaded yet.</td></tr>';
+}
+
+/* ---------- dynasty ---------- */
+let dynSort="total";
+function renderDynasty(){
+  const k=D.ktc;
+  if(!k||!k.rankings.length){$("dyn-note").textContent="KTC values not loaded yet.";return}
+  $("dyn-note").textContent=`KTC superflex values as of ${k.date}. Total = every rostered player (including taxi and IR) plus owned 2027-2029 picks. Next year's picks are priced Early/Mid/Late from current standings; later years as Mid. Tap a team for details.`;
+  const rows=[...k.rankings].sort((a,b)=>b[dynSort]-a[dynSort]),mx=Math.max(...rows.map(r=>r[dynSort]));
+  $("dyn").innerHTML=`<tr><th class="l">#</th><th class="l">Team</th><th>Total</th><th>Starters</th><th>Picks</th><th class="l"></th></tr>`+rows.map((r,i)=>`<tr><td class="l">${i+1}</td><td class="l"><details><summary>${teamCell(r.team,r.owner)}</summary><div class="chips">${r.top.map(p=>`<span>${esc(p[0])} ${esc(p[1])} · ${p[2].toLocaleString()}</span>`).join("")}</div><div class="chips">${r.picks.map(p=>`<span>${esc(p.label)} · ${p.value.toLocaleString()}</span>`).join("")}</div></details></td><td><b>${r.total.toLocaleString()}</b></td><td>${r.starters.toLocaleString()}</td><td>${r.picks_value.toLocaleString()}</td><td class="l"><div class="bar"><i style="width:${r[dynSort]/mx*100}%"></i></div></td></tr>`).join("");
+  $("dyn-sort").onclick=e=>{const b=e.target.dataset.k;if(!b)return;dynSort=b;document.querySelectorAll("#dyn-sort button").forEach(x=>x.classList.toggle("on",x.dataset.k==b));renderDynasty()};
+  // quadrant
+  const pts=k.rankings.filter(r=>r.proj!=null);
+  if(pts.length){
+    const W=560,H=380,P=40,xs=pts.map(r=>r.proj),ys=pts.map(r=>r.total);
+    const x0=Math.min(...xs)*.97,x1=Math.max(...xs)*1.03,y0=Math.min(...ys)*.95,y1=Math.max(...ys)*1.05;
+    const X=v=>P+(v-x0)/(x1-x0)*(W-2*P),Y=v=>H-P-(v-y0)/(y1-y0)*(H-2*P);
+    const mxv=xs.reduce((a,b)=>a+b)/xs.length,myv=ys.reduce((a,b)=>a+b)/ys.length;
+    let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block"><line x1="${X(mxv)}" y1="${P/2}" x2="${X(mxv)}" y2="${H-P}" stroke="#26313d" stroke-dasharray="4"/><line x1="${P}" y1="${Y(myv)}" x2="${W-P/2}" y2="${Y(myv)}" stroke="#26313d" stroke-dasharray="4"/>`;
+    [["Dynasty",W-P,P/2+10,"end"],["Win now",W-P,H-P-6,"end"],["Rebuilding",P+4,P/2+10,"start"],["Trouble",P+4,H-P-6,"start"]].forEach(([t,x,y,a])=>svg+=`<text x="${x}" y="${y}" fill="#8b98a5" font-size="12" text-anchor="${a}">${t}</text>`);
+    pts.forEach(r=>{svg+=`<circle cx="${X(r.proj)}" cy="${Y(r.total)}" r="6" fill="#3ddc97"><title>${esc(r.team)}: ${r.proj} proj pts/wk, ${r.total.toLocaleString()} KTC</title></circle><text x="${X(r.proj)+8}" y="${Y(r.total)+4}" fill="#e6edf3" font-size="11">${esc(mname(r.owner).slice(0,12))}</text>`});
+    svg+=`<text x="${W/2}" y="${H-8}" fill="#8b98a5" font-size="11" text-anchor="middle">Projected points per week →</text><text x="12" y="${H/2}" fill="#8b98a5" font-size="11" transform="rotate(-90 12 ${H/2})" text-anchor="middle">KTC value →</text></svg>`;
+    $("quad").innerHTML=svg;
+  }
+  // trend
+  const dates=Object.keys(k.team_history).sort();
+  if(dates.length<2){$("trend").innerHTML=`<p class="empty">Tracking started ${dates[0]||"today"}. The chart fills in as daily values build up.</p>`;return}
+  const W=560,H=300,P=36,owners=k.rankings.map(r=>r.owner),all=dates.flatMap(d=>owners.map(o=>k.team_history[d][o]).filter(v=>v!=null));
+  const y0=Math.min(...all)*.97,y1=Math.max(...all)*1.03,X=i=>P+i/(dates.length-1)*(W-2*P),Y=v=>H-P-(v-y0)/(y1-y0)*(H-2*P);
+  const cols=["#3ddc97","#f5b942","#5aa9ff","#ff6b6b","#c58cff","#4dd4e0","#ff9f5a","#9ad15a","#ff7ab8","#b0b8c4","#e8d44d","#7f8cff"];
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">`;
+  owners.forEach((o,i)=>{const pts=dates.map((d,j)=>k.team_history[d][o]!=null?`${X(j)},${Y(k.team_history[d][o])}`:null).filter(Boolean).join(" ");svg+=`<polyline points="${pts}" fill="none" stroke="${cols[i%12]}" stroke-width="2"><title>${esc(mname(o))}</title></polyline>`});
+  svg+=`<text x="${P}" y="${H-10}" fill="#8b98a5" font-size="11">${dates[0]}</text><text x="${W-P}" y="${H-10}" fill="#8b98a5" font-size="11" text-anchor="end">${dates[dates.length-1]}</text></svg>`;
+  $("trend").innerHTML=svg+`<div class="chips">${owners.map((o,i)=>`<span style="border-color:${cols[i%12]}">${esc(mname(o))}</span>`).join("")}</div>`;
 }
 
 /* ---------- money ---------- */
@@ -257,7 +308,7 @@ fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
   document.title=D.league.name+" HQ";
   $("title").textContent=D.league.name;
   $("gen").textContent=`${D.league.seasons[0]}-${D.league.current} · updated ${new Date(D.generated).toLocaleString()}`;
-  tabs();renderWhatIf();renderStandings();renderHistory();renderH2H();renderRecords();renderMoves();renderMoney();
+  tabs();renderWhatIf();renderDynasty();renderStandings();renderHistory();renderH2H();renderRecords();renderMoves();renderMoney();
 }).catch(e=>{document.querySelector("main").innerHTML=`<div class="card">Couldn't load data.json: ${esc(e)}</div>`});
 </script>
 </body>

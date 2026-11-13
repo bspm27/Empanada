@@ -25,3 +25,15 @@ print("Deposits:", [(x["season"], x["owes_team"], x["holder_team"]) for x in d["
 print("Top waivers:", [(w["player"], w["team"], w["pts"]) for w in d["waivers"][:5]])
 print("Winnings:", [(M[r["owner"]]["name"], r["winnings"]) for r in d["alltime"] if r["winnings"]])
 print("High week:", [(x["team"], x["pts"], x["season"], x["week"]) for x in d["records"]["high_week"][:3]])
+k = d.get("ktc")
+if k:
+    print("KTC date", k["date"])
+    for r in k["rankings"]:
+        print(f"   {r['team']:<28} total {r['total']:>7} starters {r['starters']:>6} picks {r['picks_value']:>6} ({len(r['picks'])}) proj {r['proj']}  top {[t[0] for t in r['top'][:3]]}")
+    print("Scorecard:", [(M[x["owner"]]["name"], x["trades"], x["then"], x["now"]) for x in k["scorecard"]])
+    for t in d["trades"][:6]:
+        print("  trade", t["date"], [(s["team"], s["then"], s["now"], [(p["name"], p.get("then"), p.get("now")) for p in s["players"]], [(p["label"], p.get("then"), p.get("est"), p.get("now"), p.get("became")) for p in s["picks"]]) for s in t["sides"]])
+    unmatched = sum(1 for t in d["trades"] for s in t["sides"] for p in s["players"] if not p.get("now"))
+    print("Traded players with no current KTC value:", unmatched)
+else:
+    print("No KTC data")

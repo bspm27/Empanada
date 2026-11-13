@@ -422,7 +422,7 @@ for t in txns:
             {"id": pid, "name": pname(pid), "pos": "/".join(sorted(ppos(pid)))})
     for dp in t.get("draft_picks") or []:
         sides.setdefault(r2o.get(dp.get("owner_id")), {"players": [], "picks": [], "faab": 0})["picks"].append(
-            {"season": dp["season"], "round": dp["round"], "label": pick_label(dp, so)})
+            {"season": dp["season"], "round": dp["round"], "label": pick_label(dp, so), "orig_roster": dp.get("roster_id")})
     for wb in t.get("waiver_budget") or []:
         sides.setdefault(r2o.get(wb.get("receiver")), {"players": [], "picks": [], "faab": 0})["faab"] += wb.get("amount", 0)
     owners = [o for o in sides if o]
@@ -502,6 +502,224 @@ if current and current["status"] == "in_season":
            "playoff_teams": current["playoff_teams_n"], "num_teams": current["num_teams"],
            "teams": teams_in, "weeks": weeks}
 
+# ---------------------------------------------------------------- KeepTradeCut values
+import bisect  # noqa: E402
+import re  # noqa: E402
+
+KTC = ROOT / "data" / "ktc"
+daily_files = sorted((KTC / "daily").glob("*.json")) if (KTC / "daily").exists() else []
+ktc_today = json.loads(daily_files[-1].read_text()) if daily_files else {}
+ktc_date = daily_files[-1].stem if daily_files else None
+ROUND_ORD = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th"}
+
+
+def knorm(name):
+    n = re.sub(r"[^a-z ]", "", (name or "").lower().replace("-", " "))
+    return " ".join(w for w in n.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
+
+
+ktc_key, ktc_name_count, ktc_name = {}, defaultdict(int), {}
+for slug, e in ktc_today.items():
+    if e["pos"] == "RDP":
+        continue
+    ktc_key.setdefault((knorm(e["name"]), e["pos"]), slug)
+    ktc_name_count[knorm(e["name"])] += 1
+    ktc_name[knorm(e["name"])] = slug
+pick_slug = {e["name"]: slug for slug, e in ktc_today.items() if e["pos"] == "RDP"}
+
+
+def slug_for(pid):
+    pl = players.get(pid) or {}
+    nm = knorm(pl.get("full_name") or f"{pl.get('first_name', '')} {pl.get('last_name', '')}")
+    s = ktc_key.get((nm, pl.get("position")))
+    if not s and ktc_name_count.get(nm) == 1:
+        s = ktc_name[nm]
+    return s
+
+
+def now_val(slug):
+    return (ktc_today.get(slug) or {}).get("value", 0) if slug else 0
+
+
+_hist = {}
+_daily_vals = None
+
+
+def history(slug):
+    """Sorted [(yymmdd, value)] from the one-time page history plus every daily snapshot."""
+    global _daily_vals
+    if slug in _hist:
+        return _hist[slug]
+    if _daily_vals is None:
+        _daily_vals = defaultdict(dict)
+        for f in daily_files:
+            d = f.stem[2:4] + f.stem[5:7] + f.stem[8:10]
+            for s, e in json.loads(f.read_text()).items():
+                _daily_vals[s][d] = e["value"]
+    h = {}
+    p = KTC / "hist" / f"{slug}.json"
+    if p.exists():
+        h.update(json.loads(p.read_text()))
+    h.update(_daily_vals.get(slug, {}))
+    _hist[slug] = sorted(h.items())
+    return _hist[slug]
+
+
+def val_at(slug, yymmdd):
+    h = history(slug) if slug else []
+    if not h:
+        return None
+    i = bisect.bisect_right([d for d, _ in h], yymmdd)
+    if i:
+        return h[i - 1][1]
+    first_d, first_v = h[0]
+    return first_v if int(first_d) - int(yymmdd) < 300 else None  # within ~3 months after
+
+
+# drafted pick -> player
+_draft_cache = {}
+
+
+def drafted_player(season, rnd, orig_roster):
+    key = (str(season), int(rnd), orig_roster)
+    if key in _draft_cache:
+        return _draft_cache[key]
+    res = None
+    so = season_by_id.get(str(season))
+    if so:
+        owner = so["r2o"].get(orig_roster)
+        for dr in load(f"{season}/drafts.json", []) or []:
+            if dr.get("status") != "complete":
+                continue
+            slot = (dr.get("draft_order") or {}).get(owner)
+            for pk in load(f"{season}/draft_{dr['draft_id']}_picks.json", []) or []:
+                if pk.get("round") == int(rnd) and pk.get("draft_slot") == slot:
+                    res = pk.get("player_id")
+    _draft_cache[key] = res
+    return res
+
+
+future_pick_seasons = sorted({int(n.split()[0]) for n in pick_slug})
+next_draft = future_pick_seasons[0] if future_pick_seasons else None
+
+
+def tier_for(orig_roster, season):
+    """Early/Mid/Late for next year's picks from current standings; Mid for later years."""
+    if not current or int(season) != next_draft:
+        return "Mid"
+    order = [t["roster_id"] for t in current["order"]]
+    if orig_roster not in order:
+        return "Mid"
+    i, n = order.index(orig_roster), len(order)
+    return "Late" if i < n / 3 else "Mid" if i < 2 * n / 3 else "Early"
+
+
+def pick_then(season, rnd, yymmdd):
+    nm = f"{season} Mid {ROUND_ORD.get(int(rnd), '')}"
+    if nm in pick_slug:
+        v = val_at(pick_slug[nm], yymmdd)
+        if v is not None:
+            return v, False
+    for s in future_pick_seasons:  # proxy: same round, nearest season KTC still tracks
+        v = val_at(pick_slug.get(f"{s} Mid {ROUND_ORD.get(int(rnd), '')}"), yymmdd)
+        if v is not None:
+            return v, True
+    return None, True
+
+
+def pick_now(season, rnd, orig_roster):
+    pid = drafted_player(season, rnd, orig_roster)
+    if pid:
+        return now_val(slug_for(pid)), pname(pid)
+    nm = f"{season} {tier_for(orig_roster, season)} {ROUND_ORD.get(int(rnd), '')}"
+    return now_val(pick_slug.get(nm)), None
+
+
+ktc_out = None
+if ktc_today:
+    # ---- trade values then vs now
+    scorecard = defaultdict(lambda: {"trades": 0, "then": 0, "now": 0})
+    for tr in trades:
+        yymmdd = tr["date"][2:4] + tr["date"][5:7] + tr["date"][8:10] if tr["date"] else None
+        for side in tr["sides"]:
+            then_t = now_t = 0
+            est = False
+            for p in side["players"]:
+                slug = slug_for(p["id"])
+                p["then"] = val_at(slug, yymmdd) if yymmdd else None
+                p["now"] = now_val(slug)
+                then_t += p["then"] or 0
+                now_t += p["now"]
+            for pk in side["picks"]:
+                pk["then"], pk["est"] = pick_then(pk["season"], pk["round"], yymmdd) if yymmdd else (None, True)
+                pk["now"], pk["became"] = pick_now(pk["season"], pk["round"], pk.get("orig_roster"))
+                est = est or pk["est"]
+                then_t += pk["then"] or 0
+                now_t += pk["now"]
+            side["then"], side["now"], side["est"] = then_t, now_t, est
+        n = len(tr["sides"])
+        for side in tr["sides"]:
+            others = [s for s in tr["sides"] if s is not side]
+            gave_then = sum(s["then"] for s in others) / max(n - 1, 1)
+            gave_now = sum(s["now"] for s in others) / max(n - 1, 1)
+            side["net_then"], side["net_now"] = round(side["then"] - gave_then), round(side["now"] - gave_now)
+            sc = scorecard[side["owner"]]
+            sc["trades"] += 1
+            sc["then"] += side["net_then"]
+            sc["now"] += side["net_now"]
+        best = max(tr["sides"], key=lambda s: s["net_now"]) if tr["sides"] else None
+        tr["winner_now"] = best["owner"] if best and best["net_now"] > 0 else None
+        tr["swing"] = max((abs(s["net_now"] - s["net_then"]) for s in tr["sides"]), default=0)
+
+    # ---- dynasty rankings
+    rankings = []
+    if current:
+        traded = {(int(p["season"]), int(p["round"]), p["roster_id"]): p["owner_id"]
+                  for p in load(f"{current['season']}/traded_picks.json", []) or []}
+        rounds = int(current["league"].get("settings", {}).get("draft_rounds") or 4)
+        owned = defaultdict(list)
+        for s in future_pick_seasons:
+            if s <= int(current["season"]):
+                continue
+            for r in range(1, rounds + 1):
+                for t in current["teams"].values():
+                    orig = t["roster_id"]
+                    holder = traded.get((s, r, orig), orig)
+                    owned[holder].append((s, r, orig))
+        proj_avg = {}
+        if sim and sim["weeks"]:
+            for t in sim["teams"]:
+                vals = [w["proj"].get(t["owner"]) for w in sim["weeks"] if w["proj"].get(t["owner"]) is not None]
+                proj_avg[t["owner"]] = r2(sum(vals) / len(vals)) if vals else t["avg"]
+        for oid, t in current["teams"].items():
+            vals = {pid: now_val(slug_for(pid)) for pid in t["players"]}
+            starters = best_lineup(vals, {p: ppos(p) for p in vals}, current["slots"])
+            picks = []
+            for (s, r, orig) in sorted(owned.get(t["roster_id"], [])):
+                tier = tier_for(orig, s)
+                v = now_val(pick_slug.get(f"{s} {tier} {ROUND_ORD[r]}"))
+                own = "" if orig == t["roster_id"] else f" ({managers.get(current['r2o'].get(orig), {}).get('name', '?')})"
+                picks.append({"label": f"{s} {tier} {ROUND_ORD[r]}{own}", "value": v})
+            top = sorted(((pname(p), "/".join(sorted(ppos(p))), v) for p, v in vals.items() if v), key=lambda x: -x[2])
+            pv, kv = sum(vals.values()), sum(p["value"] for p in picks)
+            rankings.append({
+                "owner": oid, "team": t["team"], "total": pv + kv, "players": pv, "starters": round(starters),
+                "picks_value": kv, "picks": picks, "top": top[:8], "proj": proj_avg.get(oid) or (r2(sum(t["scores"]) / len(t["scores"])) if t["scores"] else None),
+                "pf": r2(t["pf"]), "record": f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else ""),
+            })
+        rankings.sort(key=lambda x: -x["total"])
+
+    # ---- daily team-value history (kept in git)
+    tv_path = KTC / "team_values.json"
+    tv = json.loads(tv_path.read_text()) if tv_path.exists() else {}
+    tv[ktc_date] = {r["owner"]: r["total"] for r in rankings}
+    tv_path.write_text(json.dumps(tv, separators=(",", ":"), sort_keys=True))
+
+    ktc_out = {
+        "date": ktc_date, "rankings": rankings, "team_history": tv,
+        "scorecard": sorted(({"owner": o, **v} for o, v in scorecard.items()), key=lambda x: -x["now"]),
+    }
+
 # ---------------------------------------------------------------- write
 out = {
     "generated": datetime.now(timezone.utc).isoformat(timespec="minutes"),
@@ -518,6 +736,7 @@ out = {
     "trade_pairs": dict(pairs),
     "deposits": deposits,
     "sim": sim,
+    "ktc": ktc_out,
 }
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(out, separators=(",", ":")))
