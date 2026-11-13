@@ -817,10 +817,14 @@ if ktc_today and season_ids:
                 else:
                     r["vrank"] = i + 1 if i == 0 or r["value"] != ordered[i - 1]["value"] else ordered[i - 1]["vrank"]
             curve = slot_value_curve(teams_n, max(r["round"] for r in rows))
+            raw_slots = {r["pick_no"]: (curve(r["pick_no"]) if curve else 0) for r in rows}
+            # Scale the slot curve to this class's total value today, so the average pick grades OK. This removes
+            # KTC's "future picks are priced above rookies" gap and keeps old classes fair as players retire.
+            k = sum(r["value"] for r in rows) / max(sum(raw_slots.values()), 1)
             for r in rows:
-                r["slot_value"] = curve(r["pick_no"]) if curve else 0
+                r["slot_value"] = round(raw_slots[r["pick_no"]] * k)
                 r["diff"] = r["value"] - r["slot_value"]  # KTC points above (+) or below (-) what the pick was worth
-                sc = max(-1.0, min(1.0, r["diff"] / GRADE_SCALE))
+                sc = max(-1.0, min(1.0, r["diff"] / max(GRADE_SCALE * k, 1)))
                 r["score"] = round(sc, 3)
                 r["grade"] = "Great" if sc >= 0.33 else "Bad" if sc <= -0.33 else "OK"
             report = defaultdict(lambda: {"picks": 0, "value": 0, "diff": 0, "great": 0, "bad": 0})
@@ -832,7 +836,7 @@ if ktc_today and season_ids:
                 rc["great"] += r["grade"] == "Great"
                 rc["bad"] += r["grade"] == "Bad"
             draft_results.append({
-                "season": s, "teams": teams_n, "rounds": max(r["round"] for r in rows),
+                "season": s, "teams": teams_n, "scale": round(k, 3), "rounds": max(r["round"] for r in rows),
                 "slots": [{"slot": i, "owner": slot_owner.get(i)} for i in range(1, teams_n + 1)],
                 "picks": sorted(rows, key=lambda r: r["pick_no"]),
                 "report": sorted(({"owner": o, **v} for o, v in report.items()), key=lambda x: -x["diff"]),

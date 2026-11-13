@@ -90,11 +90,11 @@ details summary{cursor:pointer}
     <div class="card" id="trend-card"><h2>Value over time</h2><p class="note">Each team's total KTC value, updated daily.</p><div id="trend"></div></div>
   </section>
   <section id="s-drafts">
-    <div class="card"><h2>Rookie drafts</h2><p class="note">Each pick is graded on the player's KTC value today vs. what that draft slot is worth (from KTC's current pick prices, e.g. about 7,000 for 1.01). Green means the player is worth more than the pick spent on him; red means less. Tiles marked with → were traded picks, showing who made the pick.</p>
+    <div class="card"><h2>Rookie drafts</h2><p class="note">Each pick is graded on the player's KTC value today vs. what that draft slot is worth. Slot values follow KTC's pick prices (1.01 is worth the most) scaled to each class's total value today, so an average pick grades OK and older classes stay fair as players retire. Green means the player is worth more than the pick spent on him; red means less. Tiles marked with → were traded picks, showing who made the pick.</p>
       <div class="wi" id="draft-years"></div>
       <div class="legend"><span>Bad</span><i class="grad"></i><span>Great</span><span class="ptag QB">QB</span><span class="ptag RB">RB</span><span class="ptag WR">WR</span><span class="ptag TE">TE</span></div>
       <div class="scroll"><div id="draft-board"></div></div></div>
-    <div class="card"><h2 id="draft-rc-title">Draft report card</h2><p class="note">Every team's picks in this class. "Vs slots" is their picks' total KTC value today minus what those draft slots are worth.</p><div class="scroll"><table id="draft-rc"></table></div></div>
+    <div class="card"><h2 id="draft-rc-title">Draft report card</h2><p class="note">Every team's picks in this class. "Vs slots" is their picks' total KTC value today minus what those draft slots are worth (each class nets to about zero).</p><div class="scroll"><table id="draft-rc"></table></div></div>
   </section>
   <section id="s-history">
     <div class="card"><h2>Trophy case</h2><div class="trophy" id="trophies"></div></div>
