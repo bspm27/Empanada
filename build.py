@@ -14,7 +14,7 @@ OUT = ROOT / "site" / "data.json"
 PAYOUTS = {1: 700, 2: 350, 3: 150}
 BUY_IN = 100
 DEPOSIT = BUY_IN // 2
-PALOOZA_WEEKS = {2, 3, 4, 5}  # matchups set after the fact so the top 6 scorers win: count for records, not head-to-head
+PALOOZA_WEEKS = {2, 3, 4}  # matchups set after the fact so the top 6 scorers win: count for records, not head-to-head
 
 SLOT_ELIG = {
     "QB": {"QB"}, "RB": {"RB"}, "WR": {"WR"}, "TE": {"TE"}, "K": {"K"}, "DEF": {"DEF"},
