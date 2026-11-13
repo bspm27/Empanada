@@ -12,7 +12,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-LEAGUE_ID = "1382898036849528832"
+LEAGUE_ID = "1350581422095622144"
 BASE = "https://api.sleeper.app/v1"
 PROJ_BASE = "https://api.sleeper.app/projections/nfl"
 ROOT = Path(__file__).resolve().parent

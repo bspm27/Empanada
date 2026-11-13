@@ -25,8 +25,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: data/raw
-          key: sleeper-raw-${{ github.run_id }}
-          restore-keys: sleeper-raw-
+          key: sleeper-raw-1350581422095622144-${{ github.run_id }}
+          restore-keys: sleeper-raw-1350581422095622144-
       - name: Fetch Sleeper data
         run: python3 fetch.py
       - name: Build page data
