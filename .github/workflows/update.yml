@@ -35,7 +35,7 @@ jobs:
       - name: Build page data
         run: python3 build.py
       - name: Data check
-        run: python3 check.py && python3 dbg_origin.py
+        run: python3 check.py
       - name: Save KTC history to the repo
         run: |
           git config user.name "league-bot"
