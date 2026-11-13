@@ -37,3 +37,12 @@ if k:
     print("Traded players with no current KTC value:", unmatched)
 else:
     print("No KTC data")
+if k:
+    for t in d["trades"]:
+        for s in t["sides"]:
+            for p in s["players"]:
+                if p["name"] in ("Joe Mixon", "Amari Cooper") or not p.get("then"):
+                    print(f"  player {t['date']} {p['name']}: then {p.get('then')} now {p.get('now')}")
+            for p in s["picks"]:
+                if t["date"] < "2024-09-01":
+                    print(f"  pick {t['date']} {p['label']}: then {p.get('then')} est {p.get('est')} now {p.get('now')} became {p.get('became')}")
