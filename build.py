@@ -14,6 +14,7 @@ OUT = ROOT / "site" / "data.json"
 PAYOUTS = {1: 700, 2: 350, 3: 150}
 BUY_IN = 100
 DEPOSIT = BUY_IN // 2
+PALOOZA_WEEKS = {2, 3, 4, 5}  # matchups set after the fact so the top 6 scorers win: count for records, not head-to-head
 
 SLOT_ELIG = {
     "QB": {"QB"}, "RB": {"RB"}, "WR": {"WR"}, "TE": {"TE"}, "K": {"K"}, "DEF": {"DEF"},
@@ -162,7 +163,8 @@ for s in season_ids:
             a, b = pair
             oa, ob = r2o[a["roster_id"]], r2o[b["roster_id"]]
             pa, pb = a.get("points") or 0, b.get("points") or 0
-            games.append({"season": s, "week": w, "a": oa, "b": ob, "pa": r2(pa), "pb": r2(pb), "playoff": False})
+            games.append({"season": s, "week": w, "a": oa, "b": ob, "pa": r2(pa), "pb": r2(pb), "playoff": False,
+                          "palooza": w in PALOOZA_WEEKS})
             for me, opp, mp, op in ((oa, ob, pa, pb), (ob, oa, pb, pa)):
                 t = teams[me]
                 t["pf"] += mp
@@ -290,8 +292,10 @@ for oid, a in alltime.items():
 alltime_rows.sort(key=lambda r: (-r["titles"], -r["pct"]))
 
 # ---------------------------------------------------------------- head to head
-h2h = defaultdict(lambda: {"w": 0, "l": 0, "t": 0, "pf": 0.0, "pa": 0.0})
+h2h_sets = {k: defaultdict(lambda: {"w": 0, "l": 0, "t": 0, "pf": 0.0, "pa": 0.0}) for k in ("all", "reg", "po")}
 for g in games:
+    if g.get("palooza"):
+        continue
     if g["playoff"]:
         wa = 1 if g["winner"] == g["a"] else 0
         res_a = "w" if wa else "l"
@@ -299,11 +303,12 @@ for g in games:
         res_a = "w" if g["pa"] > g["pb"] else "l" if g["pa"] < g["pb"] else "t"
     res_b = {"w": "l", "l": "w", "t": "t"}[res_a]
     for me, opp, mp, op, res in ((g["a"], g["b"], g["pa"], g["pb"], res_a), (g["b"], g["a"], g["pb"], g["pa"], res_b)):
-        c = h2h[f"{me}|{opp}"]
-        c[res] += 1
-        c["pf"] += mp
-        c["pa"] += op
-h2h_out = {k: {**v, "pf": r2(v["pf"]), "pa": r2(v["pa"])} for k, v in h2h.items()}
+        for key in ("all", "po" if g["playoff"] else "reg"):
+            c = h2h_sets[key][f"{me}|{opp}"]
+            c[res] += 1
+            c["pf"] += mp
+            c["pa"] += op
+h2h_out = {name: {k: {**v, "pf": r2(v["pf"]), "pa": r2(v["pa"])} for k, v in d.items()} for name, d in h2h_sets.items()}
 
 # ---------------------------------------------------------------- record book
 season_by_id = {so["season"]: so for so in seasons}
@@ -321,7 +326,7 @@ for g in games:
 reg_scores = [x for x in scores if not x["playoff"] and x["pts"] > 0]
 margins = []
 for g in games:
-    if g["pa"] == 0 and g["pb"] == 0:
+    if (g["pa"] == 0 and g["pb"] == 0) or g.get("palooza"):
         continue
     w, l = ("a", "b") if g["pa"] >= g["pb"] else ("b", "a")
     margins.append({"season": g["season"], "week": g["week"], "playoff": g["playoff"],

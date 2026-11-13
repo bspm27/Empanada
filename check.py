@@ -49,3 +49,5 @@ if k:
 if k:
     r = max(k["rankings"], key=lambda x: x["starters"])
     print("Best starting lineup:", r["team"], r["starters"], [(a, b, v) for a, b, _, v in r["lineup"]])
+h = d["h2h"]
+print("H2H games:", {k: sum(c["w"] + c["l"] + c["t"] for c in v.values()) // 2 for k, v in h.items()})
