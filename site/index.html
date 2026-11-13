@@ -261,12 +261,20 @@ function renderMoves(){
 
 /* ---------- dynasty ---------- */
 let dynSort="total";
+function dynDetail(r){
+  const chip=t=>`<span>${t}</span>`;
+  const players=`<div class="chips">${r.top.map(p=>chip(`${esc(p[0])} ${esc(p[1])} · ${p[2].toLocaleString()}`)).join("")}</div>`;
+  const picks=`<div class="chips">${r.picks.map(p=>chip(`${esc(p.label)} · ${p.value.toLocaleString()}`)).join("")||'<span class="muted">No picks</span>'}</div>`;
+  if(dynSort=="starters")return `<div class="chips">${(r.lineup||[]).map(p=>chip(`<b>${esc(p[0])}</b> ${esc(p[1])} · ${p[3].toLocaleString()}`)).join("")}</div>`;
+  if(dynSort=="picks_value")return picks;
+  return players+picks;
+}
 function renderDynasty(){
   const k=D.ktc;
   if(!k||!k.rankings.length){$("dyn-note").textContent="KTC values not loaded yet.";return}
   $("dyn-note").textContent=`KTC superflex values as of ${k.date}. Total = every rostered player (including taxi and IR) plus owned 2027-2029 picks. Next year's picks are priced Early/Mid/Late from current standings; later years as Mid. Tap a team for details.`;
   const rows=[...k.rankings].sort((a,b)=>b[dynSort]-a[dynSort]),mx=Math.max(...rows.map(r=>r[dynSort]));
-  $("dyn").innerHTML=`<tr><th class="l">#</th><th class="l">Team</th><th>Total</th><th>Starters</th><th>Picks</th><th class="l"></th></tr>`+rows.map((r,i)=>`<tr><td class="l">${i+1}</td><td class="l"><details><summary>${teamCell(r.team,r.owner)}</summary><div class="chips">${r.top.map(p=>`<span>${esc(p[0])} ${esc(p[1])} · ${p[2].toLocaleString()}</span>`).join("")}</div><div class="chips">${r.picks.map(p=>`<span>${esc(p.label)} · ${p.value.toLocaleString()}</span>`).join("")}</div></details></td><td><b>${r.total.toLocaleString()}</b></td><td>${r.starters.toLocaleString()}</td><td>${r.picks_value.toLocaleString()}</td><td class="l"><div class="bar"><i style="width:${r[dynSort]/mx*100}%"></i></div></td></tr>`).join("");
+  $("dyn").innerHTML=`<tr><th class="l">#</th><th class="l">Team</th><th>Total</th><th>Starters</th><th>Picks</th><th class="l"></th></tr>`+rows.map((r,i)=>`<tr><td class="l">${i+1}</td><td class="l"><details><summary>${teamCell(r.team,r.owner)}</summary>${dynDetail(r)}</details></td><td><b>${r.total.toLocaleString()}</b></td><td>${r.starters.toLocaleString()}</td><td>${r.picks_value.toLocaleString()}</td><td class="l"><div class="bar"><i style="width:${r[dynSort]/mx*100}%"></i></div></td></tr>`).join("");
   $("dyn-sort").onclick=e=>{const b=e.target.dataset.k;if(!b)return;dynSort=b;document.querySelectorAll("#dyn-sort button").forEach(x=>x.classList.toggle("on",x.dataset.k==b));renderDynasty()};
   // quadrant
   const pts=k.rankings.filter(r=>r.proj!=null);

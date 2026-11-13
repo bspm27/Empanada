@@ -46,3 +46,6 @@ if k:
             for p in s["picks"]:
                 if t["date"] < "2024-09-01":
                     print(f"  pick {t['date']} {p['label']}: then {p.get('then')} est {p.get('est')} now {p.get('now')} became {p.get('became')}")
+if k:
+    r = max(k["rankings"], key=lambda x: x["starters"])
+    print("Best starting lineup:", r["team"], r["starters"], [(a, b, v) for a, b, _, v in r["lineup"]])

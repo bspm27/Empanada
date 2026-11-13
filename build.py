@@ -43,6 +43,20 @@ def lineup_slots(roster_positions):
     return sorted(slots, key=lambda s: len(SLOT_ELIG[s]))
 
 
+def best_lineup_detail(points, positions, slots):
+    """Same greedy fill as best_lineup, returning [(slot, pid, pts)] in lineup order."""
+    ranked = sorted(points.items(), key=lambda kv: kv[1], reverse=True)
+    used, out = set(), []
+    for slot in slots:
+        for pid, pts in ranked:
+            if pid not in used and positions.get(pid, set()) & SLOT_ELIG[slot]:
+                used.add(pid)
+                out.append((slot, pid, pts))
+                break
+    order = ["QB", "RB", "WR", "TE", "FLEX", "WRRB_FLEX", "REC_FLEX", "SUPER_FLEX", "K", "DEF"]
+    return sorted(out, key=lambda x: (order.index(x[0]) if x[0] in order else 99, -x[2]))
+
+
 def best_lineup(points, positions, slots):
     """points: {pid: pts}; positions: {pid: set(pos)}. Greedy fill, tightest slot first.
     Optimal when slot eligibility sets are nested (true for standard lineups)."""
@@ -704,7 +718,9 @@ if ktc_today:
                 proj_avg[t["owner"]] = r2(sum(vals) / len(vals)) if vals else t["avg"]
         for oid, t in current["teams"].items():
             vals = {pid: now_val(slug_for(pid)) for pid in t["players"]}
-            starters = best_lineup(vals, {p: ppos(p) for p in vals}, current["slots"])
+            lineup = best_lineup_detail(vals, {p: ppos(p) for p in vals}, current["slots"])
+            starters = sum(v for _, _, v in lineup)
+            slot_label = {"SUPER_FLEX": "SF", "FLEX": "FLEX", "WRRB_FLEX": "W/R", "REC_FLEX": "W/T"}
             picks = []
             for (s, r, orig) in sorted(owned.get(t["roster_id"], [])):
                 tier = tier_for(orig, s)
@@ -715,7 +731,8 @@ if ktc_today:
             pv, kv = sum(vals.values()), sum(p["value"] for p in picks)
             rankings.append({
                 "owner": oid, "team": t["team"], "total": pv + kv, "players": pv, "starters": round(starters),
-                "picks_value": kv, "picks": picks, "top": top[:8], "proj": proj_avg.get(oid) or (r2(sum(t["scores"]) / len(t["scores"])) if t["scores"] else None),
+                "picks_value": kv, "picks": picks, "top": top[:8],
+                "lineup": [[slot_label.get(sl, sl), pname(pid), "/".join(sorted(ppos(pid))), v] for sl, pid, v in lineup], "proj": proj_avg.get(oid) or (r2(sum(t["scores"]) / len(t["scores"])) if t["scores"] else None),
                 "pf": r2(t["pf"]), "record": f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else ""),
             })
         rankings.sort(key=lambda x: -x["total"])
