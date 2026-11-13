@@ -518,14 +518,18 @@ def knorm(name):
     return " ".join(w for w in n.split() if w not in ("jr", "sr", "ii", "iii", "iv", "v"))
 
 
+ktc_all = json.loads((KTC / "all.json").read_text()) if (KTC / "all.json").exists() else {}
+is_pick = lambda e: e.get("pos") == "RDP" or (e.get("name") or "")[:2] == "20"  # noqa: E731
 ktc_key, ktc_name_count, ktc_name = {}, defaultdict(int), {}
-for slug, e in ktc_today.items():
-    if e["pos"] == "RDP":
-        continue
-    ktc_key.setdefault((knorm(e["name"]), e["pos"]), slug)
-    ktc_name_count[knorm(e["name"])] += 1
-    ktc_name[knorm(e["name"])] = slug
+for src in (ktc_today, ktc_all):  # current top 500 first, then everyone else KTC knows (retired, low-ranked)
+    for slug, e in src.items():
+        if is_pick(e) or (knorm(e["name"]), e["pos"]) in ktc_key:
+            continue
+        ktc_key[(knorm(e["name"]), e["pos"])] = slug
+        ktc_name_count[knorm(e["name"])] += 1
+        ktc_name[knorm(e["name"])] = slug
 pick_slug = {e["name"]: slug for slug, e in ktc_today.items() if e["pos"] == "RDP"}
+pick_slug_hist = {**{e["name"]: slug for slug, e in ktc_all.items() if is_pick(e)}, **pick_slug}
 
 
 def slug_for(pid):
@@ -538,7 +542,11 @@ def slug_for(pid):
 
 
 def now_val(slug):
-    return (ktc_today.get(slug) or {}).get("value", 0) if slug else 0
+    if not slug:
+        return 0
+    if slug in ktc_today:
+        return ktc_today[slug].get("value", 0)
+    return (ktc_all.get(slug) or {}).get("value", 0)
 
 
 _hist = {}
@@ -616,15 +624,18 @@ def tier_for(orig_roster, season):
 
 def pick_then(season, rnd, yymmdd):
     nm = f"{season} Mid {ROUND_ORD.get(int(rnd), '')}"
-    if nm in pick_slug:
-        v = val_at(pick_slug[nm], yymmdd)
+    if nm in pick_slug_hist:
+        v = val_at(pick_slug_hist[nm], yymmdd)
         if v is not None:
             return v, False
-    for s in future_pick_seasons:  # proxy: same round, nearest season KTC still tracks
-        v = val_at(pick_slug.get(f"{s} Mid {ROUND_ORD.get(int(rnd), '')}"), yymmdd)
+    for s in sorted({int(n.split()[0]) for n in pick_slug_hist if n.split()[0].isdigit()}):  # proxy: same round, nearest season KTC still tracks
+        v = val_at(pick_slug_hist.get(f"{s} Mid {ROUND_ORD.get(int(rnd), '')}"), yymmdd)
         if v is not None:
             return v, True
-    return None, True
+    # trade predates every pick history KTC has: use the oldest value KTC has for this round
+    oldest = [history(sl)[0] for n, sl in pick_slug_hist.items()
+              if n.endswith(f" Mid {ROUND_ORD.get(int(rnd), '')}") and history(sl)]
+    return (min(oldest)[1], True) if oldest else (None, True)
 
 
 def pick_now(season, rnd, orig_roster):

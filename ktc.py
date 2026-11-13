@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent
 RAW = ROOT / "data" / "raw"
 KTC = ROOT / "data" / "ktc"
 UA = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"}
+TRADE_DB = "https://keeptradecut.com/dynasty/trade-database?format=2"
 RANKINGS = "https://keeptradecut.com/dynasty-rankings?page=0&filters=QB|WR|RB|TE|RDP&format=2"
 PLAYER_URL = "https://keeptradecut.com/dynasty-rankings/players/{}"
 MAX_NEW_HISTORIES = 250
@@ -53,13 +54,31 @@ def main():
     out.write_text(json.dumps(today, separators=(",", ":"), sort_keys=True))
     print(f"  {len(today)} entries -> {out.name}")
 
+    # full player list (includes retired / low-ranked players and possibly past picks) for slug lookups
+    print("Fetching KTC player search list")
+    allp = {}
+    try:
+        html = get(TRADE_DB)
+        m = re.search(r"var\s+allPlayerSearchValues\s*=\s*(\[.*?\]);\s*\n", html, re.S)
+        if m:
+            for p in json.loads(m.group(1)):
+                allp[p["slug"]] = {"name": p["playerName"], "pos": p.get("position"), "value": p.get("superflexValue") or 0}
+    except Exception as e:  # noqa: BLE001
+        print("  search list failed:", e)
+    if allp:
+        (KTC / "all.json").write_text(json.dumps(allp, separators=(",", ":"), sort_keys=True))
+    picks_all = sorted(e["name"] for e in allp.values() if (e["name"] or "")[:2] == "20")
+    print(f"  {len(allp)} entries; pick-like names: {len(picks_all)} e.g. {picks_all[:12]}")
+
     # which slugs need full history: every player who moved in a league trade, plus Mid-tier picks
     players = json.loads((RAW / "players.json").read_text())
     by_key = {}
-    for slug, e in today.items():
-        if e["pos"] != "RDP":
-            by_key.setdefault((norm(e["name"]), e["pos"]), slug)
-    need = {slug for slug, e in today.items() if e["pos"] == "RDP" and " Mid " in e["name"]}
+    for src in (today, allp):
+        for slug, e in src.items():
+            if e["pos"] != "RDP" and (e["name"] or "")[:2] != "20":
+                by_key.setdefault((norm(e["name"]), e["pos"]), slug)
+    need = {slug for src in (today, allp) for slug, e in src.items()
+            if (e["name"] or "")[:2] == "20" and " Mid " in e["name"]}
     seasons = json.loads((RAW / "seasons.json").read_text())
     for s in seasons:
         for t in json.loads((RAW / s / "transactions.json").read_text()):
