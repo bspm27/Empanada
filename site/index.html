@@ -23,7 +23,7 @@ section{display:none}section.on{display:block}
 .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+th{cursor:pointer;user-select:none;-webkit-user-select:none;color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
 th:first-child,td:first-child,td.l,th.l{text-align:left}
 tr:last-child td{border-bottom:0}
 .team{font-weight:600}.mgr{color:var(--muted);font-size:12px;display:block}
@@ -50,6 +50,7 @@ select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);bo
 .rules h3{margin:16px 0 4px;font-size:15px;color:var(--acc)}
 .rules p,.rules li{color:#c9d1d9}
 .muted{color:var(--muted)}
+th .arr{font-size:10px;margin-left:3px;color:var(--acc)}
 .up{color:var(--good)}.down{color:var(--bad)}
 .vals{color:var(--muted);font-size:12px;white-space:nowrap}
 .tside .tot{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:13px}
@@ -183,7 +184,7 @@ function renderSim(){
   $("sim-note").textContent=`10,000 simulations of weeks ${S.first_week}-${S.playoff_week_start-1}. Each team plays its best projected lineup every week (bye, IR and Out players benched). Top ${S.playoff_teams} make it; ties go to points for.`;
   const shade=v=>`rgba(61,220,151,${Math.min(1,v*1.6).toFixed(2)})`;
   $("odds").innerHTML=`<tr><th class="l">Team</th><th>Record</th><th>Proj W</th><th>Playoffs</th>${byes?"<th>Bye</th>":""}<th class="l">Seed odds (1 to ${S.playoff_teams})</th></tr>`+
-    R.map(t=>`<tr><td>${teamCell(t.team,t.owner)}</td><td>${rec(t.w,t.l,t.t)}</td><td>${t.projW.toFixed(1)}</td><td><b>${pct(t.playoff)}</b></td>${byes?`<td>${pct(t.bye)}</td>`:""}<td class="l"><span class="seeds">${t.seeds.map((v,i)=>`<span title="Seed ${i+1}: ${pct(v)}" style="background:${shade(v)}"></span>`).join("")}</span></td></tr>`).join("");
+    R.map(t=>`<tr><td>${teamCell(t.team,t.owner)}</td><td>${rec(t.w,t.l,t.t)}</td><td>${t.projW.toFixed(1)}</td><td><b>${pct(t.playoff)}</b></td>${byes?`<td>${pct(t.bye)}</td>`:""}<td class="l" data-v="${t.seeds.reduce((a,v,i)=>a+v*(S.playoff_teams-i),0)}"><span class="seeds">${t.seeds.map((v,i)=>`<span title="Seed ${i+1}: ${pct(v)}" style="background:${shade(v)}"></span>`).join("")}</span></td></tr>`).join("");
   const nonP=S.num_teams-S.playoff_teams;
   const tank=R.filter(t=>t.playoff<.9).map(t=>{const pk=t.picks.slice(0,nonP);const miss=1-t.playoff;const exp=miss>0?pk.reduce((a,v,i)=>a+v*(i+1),0)/miss:null;return{...t,pk,exp}}).sort((a,b)=>(a.exp??99)-(b.exp??99));
   $("tank").innerHTML=`<tr><th class="l">Team</th><th>Max pts</th><th>Miss playoffs</th><th>#1 pick</th><th>Top 3 pick</th><th>Avg pick if out</th></tr>`+
@@ -200,7 +201,7 @@ function renderWhatIf(){
 /* ---------- standings ---------- */
 function standTable(rows,showFinish){
   return `<tr><th class="l">Team</th><th>Record</th><th>PF</th><th>PA</th><th>Max PF</th><th>Eff</th>${showFinish?"<th>Finish</th>":""}</tr>`+
-   rows.map(r=>`<tr><td>${teamCell(r.team,r.owner)}</td><td>${rec(r.w,r.l,r.t)}</td><td>${f1(r.pf)}</td><td>${f1(r.pa)}</td><td>${f1(r.maxpf)}</td><td>${r.eff?r.eff.toFixed(1)+"%":"–"}</td>${showFinish?`<td>${finishPill(r.finish)}</td>`:""}</tr>`).join("");
+   rows.map(r=>`<tr><td>${teamCell(r.team,r.owner)}</td><td>${rec(r.w,r.l,r.t)}</td><td>${f1(r.pf)}</td><td>${f1(r.pa)}</td><td>${f1(r.maxpf)}</td><td>${r.eff?r.eff.toFixed(1)+"%":"–"}</td>${showFinish?`<td data-v="${r.finish?4-r.finish:""}">${finishPill(r.finish)}</td>`:""}</tr>`).join("");
 }
 function renderStandings(){
   const cur=D.seasons.find(s=>s.season==D.league.current);
@@ -280,7 +281,7 @@ function renderDynasty(){
   if(!k||!k.rankings.length){$("dyn-note").textContent="KTC values not loaded yet.";return}
   $("dyn-note").textContent=`KTC superflex values as of ${k.date}. Total = every rostered player (including taxi and IR) plus owned 2027-2029 picks. Next year's picks are priced Early/Mid/Late from current standings; later years as Mid. Tap a team for details.`;
   const rows=[...k.rankings].sort((a,b)=>b[dynSort]-a[dynSort]),mx=Math.max(...rows.map(r=>r[dynSort]));
-  $("dyn").innerHTML=`<tr><th class="l">#</th><th class="l">Team</th><th>Total</th><th>Starters</th><th>Picks</th><th class="l"></th></tr>`+rows.map((r,i)=>`<tr><td class="l">${i+1}</td><td class="l"><details><summary>${teamCell(r.team,r.owner)}</summary>${dynDetail(r)}</details></td><td><b>${r.total.toLocaleString()}</b></td><td>${r.starters.toLocaleString()}</td><td>${r.picks_value.toLocaleString()}</td><td class="l"><div class="bar"><i style="width:${r[dynSort]/mx*100}%"></i></div></td></tr>`).join("");
+  $("dyn").innerHTML=`<tr><th class="l">#</th><th class="l">Team</th><th>Total</th><th>Starters</th><th>Picks</th><th class="l"></th></tr>`+rows.map((r,i)=>`<tr><td class="l">${i+1}</td><td class="l"><details><summary>${teamCell(r.team,r.owner)}</summary>${dynDetail(r)}</details></td><td><b>${r.total.toLocaleString()}</b></td><td>${r.starters.toLocaleString()}</td><td>${r.picks_value.toLocaleString()}</td><td class="l" data-v="${r[dynSort]}"><div class="bar"><i style="width:${r[dynSort]/mx*100}%"></i></div></td></tr>`).join("");
   $("dyn-sort").onclick=e=>{const b=e.target.dataset.k;if(!b)return;dynSort=b;document.querySelectorAll("#dyn-sort button").forEach(x=>x.classList.toggle("on",x.dataset.k==b));renderDynasty()};
   // quadrant
   const pts=k.rankings.filter(r=>r.proj!=null);
@@ -312,10 +313,44 @@ function renderMoney(){
   const rows=[...D.alltime].filter(r=>r.winnings>0).sort((a,b)=>b.winnings-a.winnings);
   const top=rows[0]?.winnings||1;
   $("winnings").innerHTML=`<tr><th class="l">Manager</th><th>Titles</th><th>2nd</th><th>3rd</th><th>Winnings</th><th class="l"></th></tr>`+
-    (rows.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.titles||""}</td><td>${r.seconds||""}</td><td>${r.thirds||""}</td><td><b>${money(r.winnings)}</b></td><td class="l"><div class="bar"><i style="width:${r.winnings/top*100}%"></i></div></td></tr>`).join("")||'<tr><td class="empty">No payouts yet</td></tr>');
+    (rows.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.titles||""}</td><td>${r.seconds||""}</td><td>${r.thirds||""}</td><td><b>${money(r.winnings)}</b></td><td class="l" data-v="${r.winnings}"><div class="bar"><i style="width:${r.winnings/top*100}%"></i></div></td></tr>`).join("")||'<tr><td class="empty">No payouts yet</td></tr>');
   $("deposits").innerHTML=`<tr><th class="l">Owes deposit</th><th>Pick</th><th class="l">Pick now owned by</th><th>Deposit</th></tr>`+
     (D.deposits.map(d=>`<tr><td>${teamCell(d.owes_team,d.owes)}</td><td>${d.season} 1st</td><td class="l">${teamCell(d.holder_team,d.holder)}</td><td>${money(d.amount)}</td></tr>`).join("")||'<tr><td class="empty">No future 1sts have been traded.</td></tr>');
 }
+
+
+/* ---------- click any column header to sort: largest first, click again for smallest ---------- */
+function cellVal(td){
+  if(!td)return null;
+  let t=(td.dataset.v??td.innerText??"").trim();
+  if(!t||t=="–"||t=="-"||t=="·")return null;
+  let m=t.match(/^(\d+)-(\d+)(?:-(\d+))?$/);
+  if(m){const w=+m[1],l=+m[2],x=+(m[3]||0),g=w+l+x;return g?(w+x/2)/g+g*1e-6:0}
+  m=t.match(/^(\d{4})(?:-(\d\d)-(\d\d))?\s*(?:W(\d+))?/);
+  if(m&&(m[2]||m[4]))return +m[1]*1e4+(m[2]?+m[2]*100+ +m[3]:+m[4]);
+  const n=t.replace(/[−–]/g,"-").replace(/[$,%+<>\s]/g,"").replace(/est\.?$/,"");
+  if(/^-?\d*\.?\d+$/.test(n))return parseFloat(n);
+  if(t=="FA")return -1;
+  return t.toLowerCase();
+}
+document.addEventListener("click",e=>{
+  const th=e.target.closest("th");if(!th)return;
+  const tr=th.parentElement,table=th.closest("table");if(!table)return;
+  const idx=[...tr.children].indexOf(th);
+  const rows=[...table.querySelectorAll("tr")].filter(r=>r!==tr&&r.children.length>1&&!r.querySelector("th"));
+  if(rows.length<2)return;
+  const desc=th.dataset.dir!=="desc";
+  tr.querySelectorAll("th").forEach(h=>{delete h.dataset.dir;h.querySelector(".arr")?.remove()});
+  th.dataset.dir=desc?"desc":"asc";
+  th.insertAdjacentHTML("beforeend",`<span class="arr">${desc?"▼":"▲"}</span>`);
+  const vals=new Map(rows.map(r=>[r,cellVal(r.children[idx])]));
+  const isText=[...vals.values()].some(v=>typeof v=="string");
+  rows.sort((a,b)=>{const x=vals.get(a),y=vals.get(b);
+    if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;
+    if(isText){const c=String(x).localeCompare(String(y));return desc?c:-c}
+    return desc?y-x:x-y});
+  const parent=rows[0].parentElement;rows.forEach(r=>parent.appendChild(r));
+});
 
 fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
   D=d;
