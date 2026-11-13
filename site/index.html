@@ -91,6 +91,7 @@ details summary{cursor:pointer}
     <div class="grid2" id="records"></div>
   </section>
   <section id="s-moves">
+    <div class="card"><h2>Worst trades in league history</h2><p class="note">Ranked by how lopsided each trade is in today's KTC value. "Lost" is what the losing side gave up, measured now. Tap a column to re-sort.</p><div class="scroll"><table id="worst"></table></div></div>
     <div class="card"><h2>Waiver hall of fame</h2><p class="note">Pickups ranked by points they scored in that manager's starting lineup while on the roster.</p><div class="scroll"><table id="waivers"></table></div></div>
     <div class="card"><h2>Trade network</h2><p class="note">Thicker lines mean more trades between two managers.</p><div id="network"></div></div>
     <div class="card"><h2>Trade scorecard</h2><p class="note">KTC value each manager gained or lost across all their trades: at the time of each trade vs. today. Picks already used are valued as the player drafted with them.</p><div class="scroll"><table id="scorecard"></table></div></div>
@@ -263,6 +264,11 @@ function renderMoves(){
   const k=D.ktc,num=x=>x==null?"–":Math.round(x).toLocaleString(),dl=x=>x==null?"":`<span class="${x>=0?"up":"down"}">${x>=0?"+":""}${Math.round(x).toLocaleString()}</span>`;
   const item=(name,sub,then,now,est)=>`<div>${name} ${sub?`<small>${sub}</small>`:""}${k?`<div class="vals">${num(then)}${est&&then!=null?" est.":""} → ${num(now)}</div>`:""}</div>`;
   $("tradelog").innerHTML=D.trades.map(t=>`<div class="trade"><div class="muted" style="font-size:13px;margin-bottom:6px">${t.date||t.season} · ${t.season} week ${t.week}${k&&t.winner_now?` · <span class="up">${esc(mname(t.winner_now))} winning now</span>`:""}</div><div class="tside">${t.sides.map(s=>`<div class="${k&&t.winner_now==s.owner?"win":""}"><b>${esc(s.team)} got</b>${s.players.map(p=>item(esc(p.name),esc(p.pos),p.then,p.now,false)).join("")}${s.picks.map(p=>item(esc(p.label),p.became?"→ "+esc(p.became):"",p.then,p.now,p.est)).join("")}${s.faab?`<div>$${s.faab} FAAB</div>`:""}${!s.players.length&&!s.picks.length&&!s.faab?'<small>Nothing</small>':""}${k?`<div class="tot">Then ${num(s.then)} (${dl(s.net_then)}) · Now ${num(s.now)} (${dl(s.net_now)})</div>`:""}</div>`).join("")}</div></div>`).join("")||'<p class="empty">No trades yet.</p>';
+  if(k){
+    const got=s=>[...s.players.map(p=>`${esc(p.name)} <span class="muted">${Math.round(p.now).toLocaleString()}</span>`),...s.picks.map(p=>`${esc(p.label)}${p.became?" → "+esc(p.became):""} <span class="muted">${Math.round(p.now).toLocaleString()}</span>`)].join("<br>")||'<span class="muted">Nothing</span>';
+    const rows=D.trades.filter(t=>t.sides.length>=2).map(t=>{const sides=[...t.sides].sort((a,b)=>a.net_now-b.net_now);return{t,lo:sides[0],hi:sides[sides.length-1],gap:-sides[0].net_now}}).filter(r=>r.gap>0).sort((a,b)=>b.gap-a.gap);
+    $("worst").innerHTML=`<tr><th class="l">#</th><th>Lost</th><th class="l">Loser got</th><th class="l">Winner got</th><th>Date</th></tr>`+rows.map((r,i)=>`<tr style="vertical-align:top"><td class="l">${i+1}</td><td data-v="${r.gap}"><b class="down">-${r.gap.toLocaleString()}</b></td><td class="l" style="white-space:normal;min-width:140px" data-v="${r.lo.now}">${teamCell(r.lo.team,r.lo.owner)}<div style="margin-top:4px;font-size:13px">${got(r.lo)}</div></td><td class="l" style="white-space:normal;min-width:140px" data-v="${r.hi.now}">${teamCell(r.hi.team,r.hi.owner)}<div style="margin-top:4px;font-size:13px">${got(r.hi)}</div></td><td>${r.t.date||r.t.season}</td></tr>`).join("");
+  }
   $("scorecard").innerHTML=k?`<tr><th class="l">Manager</th><th>Trades</th><th>Net at trade</th><th>Net today</th><th>Change</th></tr>`+k.scorecard.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.trades}</td><td>${dl(r.then)}</td><td><b>${dl(r.now)}</b></td><td>${dl(r.now-r.then)}</td></tr>`).join(""):'<tr><td class="empty">KTC values not loaded yet.</td></tr>';
 }
 

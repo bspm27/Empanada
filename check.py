@@ -51,3 +51,12 @@ if k:
     print("Best starting lineup:", r["team"], r["starters"], [(a, b, v) for a, b, _, v in r["lineup"]])
 h = d["h2h"]
 print("H2H games:", {k: sum(c["w"] + c["l"] + c["t"] for c in v.values()) // 2 for k, v in h.items()})
+if k:
+    rows = []
+    for t in d["trades"]:
+        if len(t["sides"]) < 2:
+            continue
+        ss = sorted(t["sides"], key=lambda s: s["net_now"])
+        rows.append((-ss[0]["net_now"], t["date"], ss[0]["team"], [p["name"] for p in ss[0]["players"]] + [p["label"] for p in ss[0]["picks"]], ss[-1]["team"], [p["name"] for p in ss[-1]["players"]] + [(p["label"], p.get("became")) for p in ss[-1]["picks"]]))
+    for r in sorted(rows, reverse=True)[:5]:
+        print("Worst trade:", r)
