@@ -1,0 +1,45 @@
+name: Update league site
+
+on:
+  schedule:
+    - cron: "0 12 * * *"    # ~6-7 am Central
+    - cron: "45 5 * * 2"    # Tuesday ~11:45 pm Central, after Monday Night Football
+  workflow_dispatch:         # "Run workflow" button on the Actions tab
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: sleeper-raw-${{ github.run_id }}
+          restore-keys: sleeper-raw-
+      - name: Fetch Sleeper data
+        run: python3 fetch.py
+      - name: Build page data
+        run: python3 build.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

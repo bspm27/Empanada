@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>League HQ</title>
+<style>
+:root{--bg:#0f1419;--panel:#171e26;--line:#26313d;--text:#e6edf3;--muted:#8b98a5;--acc:#3ddc97;--acc2:#f5b942;--bad:#ff6b6b;--good:#3ddc97}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 16px 8px;max-width:1100px;margin:0 auto}
+h1{margin:0;font-size:24px;letter-spacing:-.3px}
+.sub{color:var(--muted);font-size:13px}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav .in{max-width:1100px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;padding:0 12px}
+nav button{background:none;border:0;color:var(--muted);padding:12px 10px;font:inherit;font-weight:600;white-space:nowrap;cursor:pointer;border-bottom:2px solid transparent}
+nav button.on{color:var(--text);border-color:var(--acc)}
+main{max-width:1100px;margin:0 auto;padding:16px 12px 60px}
+section{display:none}section.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px}
+.card h2{margin:0 0 4px;font-size:17px}
+.card .note{color:var(--muted);font-size:13px;margin:0 0 10px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+tr:last-child td{border-bottom:0}
+.team{font-weight:600}.mgr{color:var(--muted);font-size:12px;display:block}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:12px;font-weight:700}
+.p1{background:#f5b94233;color:var(--acc2)}.p2{background:#c0c7d033;color:#c9d1d9}.p3{background:#cd7f3233;color:#e09a5a}.pl{background:#ff6b6b26;color:var(--bad)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.trophy{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.tcard{background:#0f1419;border:1px solid var(--line);border-radius:10px;padding:12px}
+.tcard .yr{font-size:20px;font-weight:800}
+.tcard div{margin:3px 0;font-size:14px}
+.bar{height:8px;background:#26313d;border-radius:4px;overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.seeds{display:flex;gap:2px}.seeds span{width:16px;height:16px;border-radius:3px;display:inline-block}
+select,.btn{background:#0f1419;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit}
+.wi{display:flex;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap}
+.wi button{background:#0f1419;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer;min-width:0}
+.wi button.on{border-color:var(--acc);color:var(--acc)}
+.h2h td{text-align:center}.h2h td:first-child{text-align:left;position:sticky;left:0;background:var(--panel)}
+.trade{border-top:1px solid var(--line);padding:10px 0}.trade:first-child{border-top:0}
+.tside{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tside div{background:#0f1419;border-radius:8px;padding:8px}
+.tside b{display:block;margin-bottom:3px}
+.tside small{color:var(--muted)}
+.rules h3{margin:16px 0 4px;font-size:15px;color:var(--acc)}
+.rules p,.rules li{color:#c9d1d9}
+.muted{color:var(--muted)}
+.empty{color:var(--muted);font-style:italic}
+</style>
+</head>
+<body>
+<header><h1 id="title">League HQ</h1><div class="sub" id="gen"></div></header>
+<nav><div class="in" id="tabs"></div></nav>
+<main>
+  <section id="s-now">
+    <div class="card"><h2>Playoff odds</h2><p class="note" id="sim-note"></p><div class="scroll"><table id="odds"></table></div></div>
+    <div class="card"><h2>What if?</h2><p class="note">Pick winners for this week's games and the odds above update.</p><div id="whatif"></div></div>
+    <div class="card"><h2>Tank race</h2><p class="note">Non-playoff teams draft in order of lowest max points. Odds come from the same simulation.</p><div class="scroll"><table id="tank"></table></div></div>
+    <div class="card"><h2>Standings</h2><div class="scroll"><table id="cur-stand"></table></div></div>
+  </section>
+  <section id="s-history">
+    <div class="card"><h2>Trophy case</h2><div class="trophy" id="trophies"></div></div>
+    <div class="card"><h2>All-time</h2><p class="note">Efficiency is points scored as a share of max possible points.</p><div class="scroll"><table id="alltime"></table></div></div>
+    <div class="card"><h2>Season standings <select id="season-pick"></select></h2><div class="scroll"><table id="season-stand"></table></div></div>
+  </section>
+  <section id="s-h2h">
+    <div class="card"><h2>Head to head</h2><p class="note">All-time record of the row team against the column team, regular season plus playoffs.</p><div class="scroll"><table class="h2h" id="h2h"></table></div></div>
+  </section>
+  <section id="s-records">
+    <div class="grid2" id="records"></div>
+  </section>
+  <section id="s-moves">
+    <div class="card"><h2>Waiver hall of fame</h2><p class="note">Pickups ranked by points they scored in that manager's starting lineup while on the roster.</p><div class="scroll"><table id="waivers"></table></div></div>
+    <div class="card"><h2>Trade network</h2><p class="note">Thicker lines mean more trades between two managers.</p><div id="network"></div></div>
+    <div class="card"><h2>Trade log</h2><div id="tradelog"></div></div>
+  </section>
+  <section id="s-money">
+    <div class="card"><h2>Lifetime winnings</h2><div class="scroll"><table id="winnings"></table></div></div>
+    <div class="card"><h2>Draft pick deposits</h2><p class="note">Trading away a future 1st requires a $50 deposit toward that year's buy-in. This list shows every future 1st currently owned by someone other than the original team.</p><div class="scroll"><table id="deposits"></table></div></div>
+  </section>
+  <section id="s-rules" class="rules">
+    <div class="card">
+      <h2>League rules</h2>
+      <h3>Buy-in</h3>
+      <p>$100 buy-in each year. If you want to leave the league you have to find a suitable replacement to take your team. We'll probably help.</p>
+      <h3>Payouts every year</h3>
+      <ul><li>1st: $700</li><li>2nd: $350</li><li>3rd: $150</li></ul>
+      <h3>Scoring</h3>
+      <p>Half PPR. 1 QB, 2 RB, 3 WR, 1 TE, 1 Flex, 1 Super Flex (can be a QB). No defense or kicker (that's dumb for dynasty and you know it).</p>
+      <h3>Roster</h3>
+      <p>8 bench spots, 3 IR spots, 4 taxi squad spots.</p>
+      <h3>Taxi squad</h3>
+      <p>Rookies who you draft or pick up from waivers before the start of the regular season can be put on your taxi squad. You can activate a player from your taxi squad to your active roster at any point, but once they are activated they cannot go back to your taxi squad. The taxi squad gets cleared out at the end of every regular season and then starts over with the next year's draft.</p>
+      <h3>Trades</h3>
+      <p>You can include future draft picks in trades. If you trade a future 1st round pick you have to pay half of that year's buy-in as a deposit. (E.g. you trade your 2023 1st round pick away: you pay $50 of the buy-in now, and the remaining $50 of the buy-in next year.)</p>
+      <h3>Draft</h3>
+      <p>Draft order is the reverse of playoff results (1st place drafts 12th, 2nd drafts 11th, etc.). For non-playoff teams, lowest max points determines draft order. The non-playoff team with the lowest cumulative max points gets the 1st pick in the draft.</p>
+      <h3>Lowest max points</h3>
+      <p>This is calculated every week in the app and shows the most points you could've scored if you played your highest performing players. It takes away the incentive to set a bad lineup when you are tanking. If you want to tank for a better draft pick you have to trade away your good players for future draft picks, as opposed to just putting your good players on your bench or lazily leaving roster spots empty.</p>
+    </div>
+  </section>
+</main>
+<script>
+const TABS=[["now","This season"],["history","History"],["h2h","Head to head"],["records","Record book"],["moves","Moves"],["money","Money"],["rules","Rules"]];
+let D, whatIf={};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const mname=o=>D.managers[o]?.name||o;
+const f1=x=>x==null?"–":Number(x).toFixed(1);
+const money=x=>"$"+Number(x).toLocaleString();
+const rec=(w,l,t)=>`${w}-${l}${t?"-"+t:""}`;
+const teamCell=(team,owner)=>`<span class="team">${esc(team)}</span><span class="mgr">${esc(mname(owner))}</span>`;
+const finishPill=f=>f==1?'<span class="pill p1">Champ</span>':f==2?'<span class="pill p2">2nd</span>':f==3?'<span class="pill p3">3rd</span>':"";
+
+function tabs(){
+  $("tabs").innerHTML=TABS.map(([k,l])=>`<button data-k="${k}">${l}</button>`).join("");
+  $("tabs").onclick=e=>{const k=e.target.dataset.k;if(k)show(k)};
+  show(location.hash.slice(1)||"now");
+  addEventListener("hashchange",()=>show(location.hash.slice(1)));
+}
+function show(k){
+  if(!TABS.find(t=>t[0]==k))k="now";
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.k==k));
+  document.querySelectorAll("section").forEach(s=>s.classList.toggle("on",s.id=="s-"+k));
+  history.replaceState(null,"","#"+k);
+}
+
+/* ---------- simulation ---------- */
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function simulate(S,N=10000){
+  const T=S.teams, idx={}; T.forEach((t,i)=>idx[t.owner]=i);
+  const n=T.length,P=S.playoff_teams,byes=P==6?2:0;
+  const seed=T.map(()=>new Array(P).fill(0)),wins=new Array(n).fill(0),pickCnt=T.map(()=>new Array(n).fill(0));
+  const mean=(wk,o)=>{const p=wk.proj?.[o];const t=T[idx[o]];return p!=null&&p>0?p:(t.avg??100)};
+  for(let it=0;it<N;it++){
+    const W=T.map(t=>t.w+0.5*t.t),PF=T.map(t=>t.pf),MX=T.map(t=>t.maxpf);
+    S.weeks.forEach((wk,wi)=>{
+      wk.games.forEach((g,gi)=>{
+        const [a,b]=g,ia=idx[a],ib=idx[b];
+        let sa=Math.max(0,mean(wk,a)+T[ia].sd*gauss()),sb=Math.max(0,mean(wk,b)+T[ib].sd*gauss());
+        const forced=wi==0?whatIf[gi]:null;
+        if(forced&&((forced==a&&sa<sb)||(forced==b&&sb<sa))){const x=sa;sa=sb;sb=x}
+        PF[ia]+=sa;PF[ib]+=sb;MX[ia]+=sa;MX[ib]+=sb;
+        if(sa>sb)W[ia]++;else if(sb>sa)W[ib]++;else{W[ia]+=.5;W[ib]+=.5}
+      });
+    });
+    const order=[...Array(n).keys()].sort((x,y)=>W[y]-W[x]||PF[y]-PF[x]);
+    order.forEach((ti,r)=>{if(r<P)seed[ti][r]++});
+    order.slice(P).sort((x,y)=>MX[x]-MX[y]).forEach((ti,r)=>pickCnt[ti][r]++);
+    for(let i=0;i<n;i++)wins[i]+=W[i];
+  }
+  return T.map((t,i)=>({...t,projW:wins[i]/N,seeds:seed[i].map(c=>c/N),playoff:seed[i].reduce((a,b)=>a+b,0)/N,bye:seed[i].slice(0,byes).reduce((a,b)=>a+b,0)/N,picks:pickCnt[i].map(c=>c/N)}));
+}
+const pct=x=>x>=.995&&x<1?">99%":x<.005&&x>0?"<1%":Math.round(x*100)+"%";
+function renderSim(){
+  const S=D.sim;
+  if(!S){$("sim-note").textContent="The season isn't in progress, so there are no odds to show.";$("odds").innerHTML="";$("tank").innerHTML="";$("whatif").innerHTML='<p class="empty">Nothing to pick right now.</p>';return}
+  const R=simulate(S).sort((a,b)=>b.playoff-a.playoff||b.projW-a.projW);
+  const byes=S.playoff_teams==6;
+  $("sim-note").textContent=`10,000 simulations of weeks ${S.first_week}-${S.playoff_week_start-1}. Each team plays its best projected lineup every week (bye, IR and Out players benched). Top ${S.playoff_teams} make it; ties go to points for.`;
+  const shade=v=>`rgba(61,220,151,${Math.min(1,v*1.6).toFixed(2)})`;
+  $("odds").innerHTML=`<tr><th class="l">Team</th><th>Record</th><th>Proj W</th><th>Playoffs</th>${byes?"<th>Bye</th>":""}<th class="l">Seed odds (1 to ${S.playoff_teams})</th></tr>`+
+    R.map(t=>`<tr><td>${teamCell(t.team,t.owner)}</td><td>${rec(t.w,t.l,t.t)}</td><td>${t.projW.toFixed(1)}</td><td><b>${pct(t.playoff)}</b></td>${byes?`<td>${pct(t.bye)}</td>`:""}<td class="l"><span class="seeds">${t.seeds.map((v,i)=>`<span title="Seed ${i+1}: ${pct(v)}" style="background:${shade(v)}"></span>`).join("")}</span></td></tr>`).join("");
+  const nonP=S.num_teams-S.playoff_teams;
+  const tank=R.filter(t=>t.playoff<.9).map(t=>{const pk=t.picks.slice(0,nonP);const miss=1-t.playoff;const exp=miss>0?pk.reduce((a,v,i)=>a+v*(i+1),0)/miss:null;return{...t,pk,exp}}).sort((a,b)=>(a.exp??99)-(b.exp??99));
+  $("tank").innerHTML=`<tr><th class="l">Team</th><th>Max pts</th><th>Miss playoffs</th><th>#1 pick</th><th>Top 3 pick</th><th>Avg pick if out</th></tr>`+
+    tank.map(t=>`<tr><td>${teamCell(t.team,t.owner)}</td><td>${f1(t.maxpf)}</td><td>${pct(1-t.playoff)}</td><td>${pct(t.pk[0]||0)}</td><td>${pct(t.pk.slice(0,3).reduce((a,b)=>a+b,0))}</td><td>${t.exp?t.exp.toFixed(1):"–"}</td></tr>`).join("");
+}
+function renderWhatIf(){
+  const S=D.sim; if(!S||!S.weeks.length)return renderSim();
+  const wk=S.weeks[0], T=Object.fromEntries(S.teams.map(t=>[t.owner,t]));
+  $("whatif").innerHTML=`<p class="muted" style="margin:0 0 6px">Week ${wk.week}</p>`+wk.games.map((g,gi)=>{const [a,b]=g;return `<div class="wi"><button data-g="${gi}" data-o="${a}" class="${whatIf[gi]==a?"on":""}">${esc(T[a]?.team)}</button><span class="muted">vs</span><button data-g="${gi}" data-o="${b}" class="${whatIf[gi]==b?"on":""}">${esc(T[b]?.team)}</button></div>`}).join("")+`<button class="btn" id="wi-reset" style="margin-top:8px">Reset</button>`;
+  $("whatif").onclick=e=>{const b=e.target;if(b.id=="wi-reset"){whatIf={}}else if(b.dataset.g!=null){const g=b.dataset.g;whatIf[g]=whatIf[g]==b.dataset.o?null:b.dataset.o}else return;renderWhatIf()};
+  renderSim();
+}
+
+/* ---------- standings ---------- */
+function standTable(rows,showFinish){
+  return `<tr><th class="l">Team</th><th>Record</th><th>PF</th><th>PA</th><th>Max PF</th><th>Eff</th>${showFinish?"<th>Finish</th>":""}</tr>`+
+   rows.map(r=>`<tr><td>${teamCell(r.team,r.owner)}</td><td>${rec(r.w,r.l,r.t)}</td><td>${f1(r.pf)}</td><td>${f1(r.pa)}</td><td>${f1(r.maxpf)}</td><td>${r.eff?r.eff.toFixed(1)+"%":"–"}</td>${showFinish?`<td>${finishPill(r.finish)}</td>`:""}</tr>`).join("");
+}
+function renderStandings(){
+  const cur=D.seasons.find(s=>s.season==D.league.current);
+  $("cur-stand").innerHTML=cur?standTable(cur.standings,false):"";
+  const sel=$("season-pick");
+  sel.innerHTML=[...D.seasons].reverse().map(s=>`<option>${s.season}</option>`).join("");
+  const draw=()=>{const s=D.seasons.find(x=>x.season==sel.value);$("season-stand").innerHTML=standTable(s.standings,true)};
+  sel.onchange=draw;draw();
+}
+
+/* ---------- history ---------- */
+function renderHistory(){
+  const tl=(x,label,cls,extra="")=>x?`<div><span class="pill ${cls}">${label}</span> ${esc(x.team)} <span class="muted">${esc(mname(x.owner))}${extra}</span></div>`:"";
+  $("trophies").innerHTML=[...D.trophies].reverse().map(t=>`<div class="tcard"><div class="yr">${t.season}</div>${tl(t.champion,"Champ","p1")}${tl(t.runner_up,"2nd","p2")}${tl(t.third,"3rd","p3")}${tl(t.last,"Last","pl",t.last?` · ${t.last.record}`:"")}<div class="muted" style="margin-top:6px;font-size:13px">Top seed: ${esc(t.top_seed?.team)} (${t.top_seed?.record})<br>Most points: ${esc(t.points_leader?.team)} (${f1(t.points_leader?.pf)})</div></div>`).join("")||'<p class="empty">No completed seasons yet.</p>';
+  $("alltime").innerHTML=`<tr><th class="l">Manager</th><th>Yrs</th><th>Record</th><th>Win %</th><th>PF</th><th>Eff</th><th>Playoffs</th><th>Titles</th><th>2nd</th><th>3rd</th><th>Last</th></tr>`+
+    D.alltime.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.seasons}</td><td>${rec(r.w,r.l,r.t)}</td><td>${r.pct.toFixed(1)}</td><td>${Math.round(r.pf).toLocaleString()}</td><td>${r.eff?r.eff.toFixed(1)+"%":"–"}</td><td>${r.playoffs}</td><td>${r.titles||""}</td><td>${r.seconds||""}</td><td>${r.thirds||""}</td><td>${r.lasts||""}</td></tr>`).join("");
+}
+
+/* ---------- head to head ---------- */
+function renderH2H(){
+  const ids=[...D.alltime].sort((a,b)=>mname(a.owner).localeCompare(mname(b.owner))).map(r=>r.owner);
+  const cell=(a,b)=>{if(a==b)return'<td class="muted">·</td>';const c=D.h2h[a+"|"+b];if(!c)return'<td class="muted">–</td>';const g=c.w+c.l+c.t,p=(c.w+.5*c.t)/g;const col=p>.5?`rgba(61,220,151,${(p-.5)*1.4})`:p<.5?`rgba(255,107,107,${(.5-p)*1.4})`:"transparent";return `<td style="background:${col}" title="PF ${c.pf} / PA ${c.pa}">${rec(c.w,c.l,c.t)}</td>`};
+  $("h2h").innerHTML=`<tr><th class="l"></th>${ids.map(o=>`<th>${esc(mname(o).slice(0,10))}</th>`).join("")}</tr>`+ids.map(a=>`<tr><td class="team">${esc(mname(a))}</td>${ids.map(b=>cell(a,b)).join("")}</tr>`).join("");
+}
+
+/* ---------- records ---------- */
+function renderRecords(){
+  const R=D.records, wk=x=>`${x.season} W${x.week}${x.playoff?" (playoffs)":""}`;
+  const block=(title,rows,cols,fmt)=>`<div class="card"><h2>${title}</h2><div class="scroll"><table><tr>${cols.map((c,i)=>`<th class="${i==0?"l":""}">${c}</th>`).join("")}</tr>${rows.map(fmt).join("")||'<tr><td class="empty">None yet</td></tr>'}</table></div></div>`;
+  $("records").innerHTML=[
+    block("Highest weekly scores",R.high_week,["Team","Pts","When"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${f1(x.pts)}</b></td><td>${wk(x)}</td></tr>`),
+    block("Lowest weekly scores",R.low_week,["Team","Pts","When"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${f1(x.pts)}</b></td><td>${wk(x)}</td></tr>`),
+    block("Biggest blowouts",R.blowouts,["Matchup","Margin","When"],x=>`<tr><td class="l">${esc(x.winner_team)} ${f1(x.wpts)}<span class="mgr">over ${esc(x.loser_team)} ${f1(x.lpts)}</span></td><td><b>${f1(x.margin)}</b></td><td>${wk(x)}</td></tr>`),
+    block("Closest games",R.closest,["Matchup","Margin","When"],x=>`<tr><td class="l">${esc(x.winner_team)} ${f1(x.wpts)}<span class="mgr">over ${esc(x.loser_team)} ${f1(x.lpts)}</span></td><td><b>${x.margin.toFixed(2)}</b></td><td>${wk(x)}</td></tr>`),
+    block("Longest win streaks",R.win_streaks,["Team","Games","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${x.len}</b></td><td>${x.season}</td></tr>`),
+    block("Longest losing streaks",R.loss_streaks,["Team","Games","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${x.len}</b></td><td>${x.season}</td></tr>`),
+    block("Best regular seasons",R.best_seasons,["Team","Record","PF","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${rec(x.w,x.l,x.t)}</b></td><td>${f1(x.pf)}</td><td>${x.season}</td></tr>`),
+    block("Worst regular seasons",R.worst_seasons,["Team","Record","PF","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${rec(x.w,x.l,x.t)}</b></td><td>${f1(x.pf)}</td><td>${x.season}</td></tr>`),
+    block("Most points in a season",R.most_pf,["Team","PF","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${f1(x.pf)}</b></td><td>${x.season}</td></tr>`),
+    block("Fewest points in a season",R.fewest_pf,["Team","PF","Season"],x=>`<tr><td>${teamCell(x.team,x.owner)}</td><td><b>${f1(x.pf)}</b></td><td>${x.season}</td></tr>`),
+  ].join("");
+}
+
+/* ---------- moves ---------- */
+function renderMoves(){
+  $("waivers").innerHTML=`<tr><th class="l">Player</th><th class="l">Added by</th><th>When</th><th>FAAB</th><th>Starts</th><th>Pts</th></tr>`+
+    (D.waivers.map(w=>`<tr><td class="l"><span class="team">${esc(w.player)}</span><span class="mgr">${esc(w.pos)}</span></td><td class="l">${teamCell(w.team,w.owner)}</td><td>${w.season} W${w.week}</td><td>${w.bid!=null?"$"+w.bid:"FA"}</td><td>${w.starts}</td><td><b>${f1(w.pts)}</b></td></tr>`).join("")||'<tr><td class="empty">No pickups yet</td></tr>');
+  // network
+  const ids=D.alltime.map(r=>r.owner),n=ids.length,W=520,H=520,cx=W/2,cy=H/2,rad=200;
+  const pos={};ids.forEach((o,i)=>{const a=-Math.PI/2+i*2*Math.PI/n;pos[o]=[cx+rad*Math.cos(a),cy+rad*Math.sin(a)]});
+  const pairs=Object.entries(D.trade_pairs),mx=Math.max(1,...pairs.map(p=>p[1]));
+  const deg={};pairs.forEach(([k,v])=>k.split("|").forEach(o=>deg[o]=(deg[o]||0)+v));
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:560px;display:block;margin:auto">`;
+  pairs.forEach(([k,v])=>{const [a,b]=k.split("|");if(!pos[a]||!pos[b])return;svg+=`<line x1="${pos[a][0]}" y1="${pos[a][1]}" x2="${pos[b][0]}" y2="${pos[b][1]}" stroke="#3ddc97" stroke-opacity="${.25+.6*v/mx}" stroke-width="${1+7*v/mx}"><title>${esc(mname(a))} and ${esc(mname(b))}: ${v} trade${v>1?"s":""}</title></line>`});
+  ids.forEach(o=>{const [x,y]=pos[o],r=8+Math.sqrt(deg[o]||0)*3;const lx=x+(x-cx)*.14,ly=y+(y-cy)*.14;svg+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#171e26" stroke="#f5b942" stroke-width="2"><title>${esc(mname(o))}: ${deg[o]||0} trades</title></circle><text x="${lx}" y="${ly+4}" fill="#e6edf3" font-size="13" text-anchor="middle">${esc(mname(o).slice(0,12))}</text>`});
+  $("network").innerHTML=pairs.length?svg+"</svg>":'<p class="empty">No trades yet.</p>';
+  $("tradelog").innerHTML=D.trades.map(t=>`<div class="trade"><div class="muted" style="font-size:13px;margin-bottom:6px">${t.date||t.season} · ${t.season} week ${t.week}</div><div class="tside">${t.sides.map(s=>`<div><b>${esc(s.team)} got</b>${s.players.map(p=>`<div>${esc(p.name)} <small>${esc(p.pos)}</small></div>`).join("")}${s.picks.map(p=>`<div>${esc(p.label)}</div>`).join("")}${s.faab?`<div>$${s.faab} FAAB</div>`:""}${!s.players.length&&!s.picks.length&&!s.faab?'<small>Nothing</small>':""}</div>`).join("")}</div></div>`).join("")||'<p class="empty">No trades yet.</p>';
+}
+
+/* ---------- money ---------- */
+function renderMoney(){
+  const rows=[...D.alltime].filter(r=>r.winnings>0).sort((a,b)=>b.winnings-a.winnings);
+  const top=rows[0]?.winnings||1;
+  $("winnings").innerHTML=`<tr><th class="l">Manager</th><th>Titles</th><th>2nd</th><th>3rd</th><th>Winnings</th><th class="l"></th></tr>`+
+    (rows.map(r=>`<tr><td class="team">${esc(mname(r.owner))}</td><td>${r.titles||""}</td><td>${r.seconds||""}</td><td>${r.thirds||""}</td><td><b>${money(r.winnings)}</b></td><td class="l"><div class="bar"><i style="width:${r.winnings/top*100}%"></i></div></td></tr>`).join("")||'<tr><td class="empty">No payouts yet</td></tr>');
+  $("deposits").innerHTML=`<tr><th class="l">Owes deposit</th><th>Pick</th><th class="l">Pick now owned by</th><th>Deposit</th></tr>`+
+    (D.deposits.map(d=>`<tr><td>${teamCell(d.owes_team,d.owes)}</td><td>${d.season} 1st</td><td class="l">${teamCell(d.holder_team,d.holder)}</td><td>${money(d.amount)}</td></tr>`).join("")||'<tr><td class="empty">No future 1sts have been traded.</td></tr>');
+}
+
+fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
+  D=d;
+  document.title=D.league.name+" HQ";
+  $("title").textContent=D.league.name;
+  $("gen").textContent=`${D.league.seasons[0]}-${D.league.current} · updated ${new Date(D.generated).toLocaleString()}`;
+  tabs();renderWhatIf();renderStandings();renderHistory();renderH2H();renderRecords();renderMoves();renderMoney();
+}).catch(e=>{document.querySelector("main").innerHTML=`<div class="card">Couldn't load data.json: ${esc(e)}</div>`});
+</script>
+</body>
+</html>
