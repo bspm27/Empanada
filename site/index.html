@@ -270,11 +270,13 @@ function renderMoves(){
 let dynSort="total";
 function dynDetail(r){
   const chip=t=>`<span>${t}</span>`;
-  const players=`<div class="chips">${r.top.map(p=>chip(`${esc(p[0])} ${esc(p[1])} · ${p[2].toLocaleString()}`)).join("")}</div>`;
-  const picks=`<div class="chips">${r.picks.map(p=>chip(`${esc(p.label)} · ${p.value.toLocaleString()}`)).join("")||'<span class="muted">No picks</span>'}</div>`;
+  const sortedPicks=[...r.picks].sort((a,b)=>b.value-a.value);
+  const picks=`<div class="chips">${sortedPicks.map(p=>chip(`${esc(p.label)} · ${p.value.toLocaleString()}`)).join("")||'<span class="muted">No picks</span>'}</div>`;
+  const everything=[...r.top.map(p=>[`${esc(p[0])} ${esc(p[1])}`,p[2]]),...r.picks.map(p=>[esc(p.label),p.value])].sort((a,b)=>b[1]-a[1]);
+  const players=`<div class="chips">${everything.map(([n,v])=>chip(`${n} · ${v.toLocaleString()}`)).join("")}</div>`;
   if(dynSort=="starters")return `<div class="chips">${(r.lineup||[]).map(p=>chip(`<b>${esc(p[0])}</b> ${esc(p[1])} · ${p[3].toLocaleString()}`)).join("")}</div>`;
   if(dynSort=="picks_value")return picks;
-  return players+picks;
+  return players;
 }
 function renderDynasty(){
   const k=D.ktc;

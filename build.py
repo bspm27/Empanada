@@ -732,11 +732,11 @@ if ktc_today:
                 v = now_val(pick_slug.get(f"{s} {tier} {ROUND_ORD[r]}"))
                 own = "" if orig == t["roster_id"] else f" ({managers.get(current['r2o'].get(orig), {}).get('name', '?')})"
                 picks.append({"label": f"{s} {tier} {ROUND_ORD[r]}{own}", "value": v})
-            top = sorted(((pname(p), "/".join(sorted(ppos(p))), v) for p, v in vals.items() if v), key=lambda x: -x[2])
+            top = sorted(((pname(p), "/".join(sorted(ppos(p))), v) for p, v in vals.items()), key=lambda x: -x[2])
             pv, kv = sum(vals.values()), sum(p["value"] for p in picks)
             rankings.append({
                 "owner": oid, "team": t["team"], "total": pv + kv, "players": pv, "starters": round(starters),
-                "picks_value": kv, "picks": picks, "top": top[:8],
+                "picks_value": kv, "picks": picks, "top": top,
                 "lineup": [[slot_label.get(sl, sl), pname(pid), "/".join(sorted(ppos(pid))), v] for sl, pid, v in lineup], "proj": proj_avg.get(oid) or (r2(sum(t["scores"]) / len(t["scores"])) if t["scores"] else None),
                 "pf": r2(t["pf"]), "record": f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else ""),
             })
