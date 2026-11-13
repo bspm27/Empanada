@@ -373,7 +373,8 @@ starter_weeks = sorted(weekly_starters.keys(), key=lambda k: (int(k[0]), k[1]))
 
 def end_of_tenure(pid, owner, start):
     ends = [e for e in leave_events.get((pid, owner), []) if e > start]
-    ends += [(e[0], e[1]) for e in leave_events.get(("__add__", pid), []) if (e[0], e[1]) > start and e[2] != owner]
+    # any later add of this player ends the tenure: by someone else (he left), or by the same owner (a new tenure starts)
+    ends += [(e[0], e[1]) for e in leave_events.get(("__add__", pid), []) if (e[0], e[1]) > start]
     return min(ends) if ends else (9999, 99)
 
 
