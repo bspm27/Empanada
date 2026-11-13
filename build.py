@@ -754,6 +754,32 @@ if ktc_today:
     }
 
 # ---------------------------------------------------------------- rookie draft results
+GRADE_SCALE = 3000  # KTC points above/below the slot's value that maps to the full green/red color
+
+
+def slot_value_curve(teams_n, rounds):
+    """Expected value of each overall pick, from KTC's current Early/Mid/Late prices for next year's picks.
+    Early/Mid/Late anchor at the middle of each third of the round; linear in between, extended at the ends."""
+    pts = []
+    for r in range(1, rounds + 1):
+        for tier, frac in (("Early", 1 / 6), ("Mid", 3 / 6), ("Late", 5 / 6)):
+            v = now_val(pick_slug.get(f"{next_draft} {tier} {ROUND_ORD.get(r, '')}"))
+            if v:
+                pts.append(((r - 1) * teams_n + frac * teams_n + 0.5, v))
+    if len(pts) < 2:
+        return None
+    def f(n):
+        if n <= pts[0][0]:
+            (x0, y0), (x1, y1) = pts[0], pts[1]
+        elif n >= pts[-1][0]:
+            (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        else:
+            i = next(i for i in range(len(pts) - 1) if pts[i][0] <= n <= pts[i + 1][0])
+            (x0, y0), (x1, y1) = pts[i], pts[i + 1]
+        return max(0, round(y0 + (y1 - y0) * (n - x0) / (x1 - x0)))
+    return f
+
+
 draft_results = []
 if ktc_today and season_ids:
     first_season = min(season_ids)
@@ -790,9 +816,11 @@ if ktc_today and season_ids:
                     r["vrank"] = n  # not valued by KTC: ranks last in the class
                 else:
                     r["vrank"] = i + 1 if i == 0 or r["value"] != ordered[i - 1]["value"] else ordered[i - 1]["vrank"]
+            curve = slot_value_curve(teams_n, max(r["round"] for r in rows))
             for r in rows:
-                r["diff"] = r["pick_no"] - r["vrank"]  # positive = player is worth more than where he went
-                sc = max(-1.0, min(1.0, r["diff"] / max(n * 0.3, 1)))
+                r["slot_value"] = curve(r["pick_no"]) if curve else 0
+                r["diff"] = r["value"] - r["slot_value"]  # KTC points above (+) or below (-) what the pick was worth
+                sc = max(-1.0, min(1.0, r["diff"] / GRADE_SCALE))
                 r["score"] = round(sc, 3)
                 r["grade"] = "Great" if sc >= 0.33 else "Bad" if sc <= -0.33 else "OK"
             report = defaultdict(lambda: {"picks": 0, "value": 0, "diff": 0, "great": 0, "bad": 0})
@@ -807,8 +835,7 @@ if ktc_today and season_ids:
                 "season": s, "teams": teams_n, "rounds": max(r["round"] for r in rows),
                 "slots": [{"slot": i, "owner": slot_owner.get(i)} for i in range(1, teams_n + 1)],
                 "picks": sorted(rows, key=lambda r: r["pick_no"]),
-                "report": sorted(({"owner": o, **v, "avg_diff": round(v["diff"] / v["picks"], 1)} for o, v in report.items()),
-                                 key=lambda x: -x["value"]),
+                "report": sorted(({"owner": o, **v} for o, v in report.items()), key=lambda x: -x["diff"]),
             })
     draft_results.sort(key=lambda d: d["season"], reverse=True)
 

@@ -63,5 +63,5 @@ if k:
 for dr in d.get("drafts") or []:
     print(f"Draft {dr['season']}: {len(dr['picks'])} picks, {dr['rounds']} rounds")
     for p in dr["picks"][:12]:
-        print(f"   {p['pick']} {p['player']} {p['pos']} val {p['value']} #{p['vrank']} {p['grade']} picker={M.get(p['picker'],{}).get('name')} orig={M.get(p['orig'],{}).get('name')}")
-    print("   report:", [(M.get(r["owner"], {}).get("name"), r["value"], r["avg_diff"]) for r in dr["report"][:4]])
+        print(f"   {p['pick']} {p['player']} {p['pos']} val {p['value']} slot {p['slot_value']} diff {p['diff']} {p['grade']} picker={M.get(p['picker'],{}).get('name')} orig={M.get(p['orig'],{}).get('name')}")
+    print("   report:", [(M.get(r["owner"], {}).get("name"), r["value"], r["diff"]) for r in dr["report"][:4]])
