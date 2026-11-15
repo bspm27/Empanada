@@ -1,0 +1,10 @@
+name: Lineup check
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check lineups
+        run: python3 lineup_check.py
