@@ -492,6 +492,7 @@ if current and current["status"] == "in_season":
             "owner": oid, "roster_id": t["roster_id"], "team": t["team"], "w": t["w"], "l": t["l"], "t": t["t"],
             "pf": r2(t["pf"]), "maxpf": r2(t["maxpf"]), "sd": r2(max(sd, 15.0)),
             "avg": r2(sum(t["scores"]) / len(t["scores"])) if t["scores"] else None,
+            "results": "".join(t["results"]),
         })
     weeks = []
     for w in range(first, ps):

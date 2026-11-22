@@ -8,3 +8,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check lineups
         run: python3 lineup_check.py
+      - uses: actions/cache/restore@v4
+        with:
+          path: data/raw
+          key: sleeper-raw-1350581422095622144-${{ github.run_id }}
+          restore-keys: sleeper-raw-1350581422095622144-
+      - name: Build league data
+        continue-on-error: true
+        run: python3 fetch.py > /dev/null && python3 build.py > /dev/null
+      - name: Storylines
+        continue-on-error: true
+        run: python3 storylines.py
