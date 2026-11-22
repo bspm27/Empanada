@@ -163,7 +163,7 @@ def main():
             win = s["if_a"][o] if o == s["a"] else s["if_b"][o]
             loss = s["if_b"][o] if o == s["a"] else s["if_a"][o]
             if 0 < odds[o] < 1 and win >= 0.999:
-                print(f"  {name(o)} clinches a playoff spot with a win (≈{pct(win)})")
+                print(f"  {name(o)} clinches a playoff spot with a win (sim {pct(win)})")
                 found = True
             if 0 < odds[o] < 1 and loss <= 0.001:
                 print(f"  {name(o)} is eliminated with a loss")
